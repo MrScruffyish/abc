@@ -200,6 +200,11 @@ LinearSolution solveLinear(const Exprs& es, const std::vector<std::string>& xs);
 // value per symbol (free symbols stay as they are).
 std::vector<Exprs> solveSystem(const Exprs& es, const std::vector<std::string>& xs);
 
+// --- sums (sum.cpp) --------------------------------------------------
+// Closed form for sum_{var = from}^{to} f, when f is a polynomial in var
+// (symbolic bounds, step 1). Throws if f is not a polynomial in var.
+Expr symbolicSum(const Expr& f, const std::string& var, const Expr& from, const Expr& to);
+
 // --- decimals (numeric.cpp) ------------------------------------------
 // num(): numbers (also sqrt(2), pi, sin(1), ...) as decimals with the given
 // number of decimals; inside expressions with symbols, the numbers are

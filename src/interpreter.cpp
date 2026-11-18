@@ -945,9 +945,15 @@ Expr Interpreter::callBuiltin(const Expr& e, const Ctx& c)
 		if (!isRange(r))
 			throw Error(name + ": the second argument must be a range, like i = 1 to 10");
 		checkNotReserved(r->name);
-		Rational v = numberOf(resolve(r->args[0], c), "the start of a range");
-		Rational to = numberOf(resolve(r->args[1], c), "the end of a range");
-		Rational by = numberOf(resolve(r->args[2], c), "the step of a range");
+		Expr aE = resolve(r->args[0], c), bE = resolve(r->args[1], c), sE = resolve(r->args[2], c);
+		bool aNum = aE->kind == Kind::Num, bNum = bE->kind == Kind::Num, sNum = sE->kind == Kind::Num;
+		if (name == "sum" && (!aNum || !bNum) && sNum && sE->num.isOne()) {
+			Expr body = resolveFree(e->args[0], r->name, c);
+			return symbolicSum(body, r->name, aE, bE);
+		}
+		Rational v = numberOf(aE, "the start of a range");
+		Rational to = numberOf(bE, "the end of a range");
+		Rational by = numberOf(sE, "the step of a range");
 		if (by.isZero())
 			throw Error(name + ": the step of a range cannot be 0");
 		Exprs items;

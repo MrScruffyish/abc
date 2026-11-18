@@ -320,6 +320,8 @@ sin([0, pi/2])          -> [0, 1]
 diff([x^2, sin(x)], x)  -> [2*x, cos(x)]
 seq(i^2, i = 1 to 5)    -> [1, 4, 9, 16, 25]
 sum(i, i = 1 to 100)    -> 5050
+sum(i, i = 1 to n)      -> n^2/2+n/2
+sum(i^2, i = 1 to n)    -> n^3/3+n^2/2+n/6
 sum([1, 2, 3])          -> 6
 [1, 2] == [1, 2]        -> 1
 ```
@@ -331,7 +333,9 @@ sum([1, 2, 3])          -> 6
   `abs`, `deg`, `coeff`, `trigexpand`, `trigreduce`, `taylor`, `limit`.
 * `seq(e, i = a to b [step s])` makes a list, and `sum(e, i = a to b)`
   adds the values (the range is written as in `table`). `sum(list)` adds
-  the elements.
+  the elements. For a polynomial in the index, `sum` also gives a closed
+  form when the bounds are symbolic (with step 1); otherwise the bounds
+  must be numbers.
 * `==` compares lists element by element. `<` and the like need numbers.
 * Lists can be stored and returned by functions (`f(t) = [t, t^2]`).
   Items cannot be assigned (`l[2] = 5` is not possible).
@@ -912,7 +916,7 @@ pipes straight into gnuplot, `sort` or a spreadsheet.
 | `limit(f, x = a[, left\|right])` | limit, also at `inf` and `-inf`                 |
 | `length(l)`         | number of elements of a list                                |
 | `seq(e, i = a to b)` | list of the values of `e`                                  |
-| `sum(e, i = a to b)`, `sum(l)` | sum of the values, or of a list                  |
+| `sum(e, i = a to b)`, `sum(l)` | sum of the values (closed form for polynomials with symbolic bounds, step 1), or of a list |
 | `assume(x > 0)`, `assume(n, integer)` | what is known about a symbol (`> >= < <= !=`; statement only) |
 | `forget(x)`, `assumptions()` | removes / lists assumptions (statement only)       |
 | `Re(z)`, `Im(z)`    | real and imaginary part (symbols are real)                  |
