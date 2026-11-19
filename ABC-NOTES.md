@@ -1,8 +1,7 @@
 # abc: a work-tracing fork of xyz
 
-`abc` is a sibling copy of [`../xyz`](../xyz). The original was **not**
-changed. This repository is a normal git clone whose remote `xyz` points
-at the original local checkout:
+`abc` is a sibling copy of [`../xyz`](../xyz). It is a normal git clone whose
+remote `xyz` points at the original local checkout:
 
 ```
 $ git -C ../abc remote -v
@@ -21,7 +20,8 @@ make test
 
 Merge conflicts are most likely in the files listed below, because that is
 where the tracing hooks live. Keep the `trace::...` calls when resolving a
-conflict; they are small and additive.
+conflict; they are small and additive. For example, the square-root support
+added in `xyz` commit `7d8c2ae` was merged here and given trace steps.
 
 * `Makefile` — binary renamed to `abc`, test targets updated.
 * `src/main.cpp` — new CLI options and LaTeX document writing.
@@ -65,6 +65,9 @@ algorithms already compute (tracing does not change the calculation):
 
 * `polyDivide` — each `long-division step` shows the updated quotient and
   remainder.
+* `simpPow` — `sqrt` of a perfect-square polynomial shows `leading term`,
+  `next coefficient` and `verify the square`; steps are buffered and only
+  emitted once the whole polynomial is known to be a square.
 * `sum` — `power sum` (Faulhaber), `shift bounds`, and the overall
   `Faulhaber's formula`.
 * `gcd`/`cancel` — `remove content`, `Euclid step`, `divide out the gcd`

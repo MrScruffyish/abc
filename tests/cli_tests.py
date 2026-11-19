@@ -267,6 +267,15 @@ def main():
                   r"\text{expand: multiply} &: \left(x+2\right) \left(x^{2}+4 x+4\right) = x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8",
                   r"\text{expand: sum the terms} &: x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8 = x^{3}+6 x^{2}+12 x+8",
               )), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "sqrt(x^2+2*x+1)"])
+        check("work trace shows the square-root algorithm",
+              all(s in out for s in (
+                  r"\text{sqrt: leading term} &: \operatorname{sqrt}\left(1\right) = 1",
+                  r"\text{sqrt: next coefficient} &: \frac{2}{2} = 1",
+                  r"\text{sqrt: verify the square} &: x^{2}+2 x+1 = \left(x+1\right)^{2}",
+                  r"\text{result} &: \left|x+1\right|",
+              )), True)
         out, _, _ = run(b, ["--show-your-work", "--work-file=" + worktex,
                             "-e", "1+1", "-e", "2+2"])
         check("work trace has one block per statement",

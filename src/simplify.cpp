@@ -21,7 +21,9 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 #include <string>
+#include <vector>
 
 namespace xyz {
 
@@ -574,6 +576,15 @@ Expr simpMulImpl(const Exprs& in)
 
 // ---------------------------------------------------------------- powers
 
+// Polynomial helpers and the perfect-square test are defined with the other
+// polynomial routines further down. nullptr means "not a square".
+namespace {
+using Coeffs = std::map<long, Expr>;
+Coeffs collect(const Expr& n, const std::string& x);
+long degreeOf(const Coeffs& c);
+Expr polynomialSqrt(const Expr& p);
+} // namespace
+
 Expr simpPow(const Expr& b, const Expr& e)
 {
 	Expr r = simpPowImpl(b, e);
@@ -659,6 +670,18 @@ Expr simpPowImpl(const Expr& b, const Expr& e)
 			long k2;
 			if (isInt(b->args[1], k2) && k2 > 0 && k2 % 2 == 0)
 				return simpPow(absValue(b->args[0]), mkInt(k2 / 2));
+		}
+		// A perfect-square polynomial has a polynomial square root. Take the
+		// positive root; for a general polynomial that can be negative, the
+		// principal square root is its absolute value (as for sqrt(x^2)).
+		if (e->num.compare(Rational(1) / Rational(2)) == 0) {
+			Expr s = polynomialSqrt(b);
+			if (s) {
+				Expr root = nonNegative(s) ? s : absValue(s);
+				trace::step(trace::Level::Methods, "perfect-square polynomial",
+				            mkCall("sqrt", Exprs{b}), root);
+				return root;
+			}
 		}
 
 		if (eint) {
@@ -999,6 +1022,7 @@ Expr diffImpl(const Expr& n, const std::string& x)
 namespace {
 
 // degree k -> coefficient of x^k (sparse: x^1000000 is cheap)
+
 Coeffs collect(const Expr& n, const std::string& x)
 {
 	Expr e = expand(n);
@@ -1033,6 +1057,126 @@ Coeffs collect(const Expr& n, const std::string& x)
 }
 
 long degreeOf(const Coeffs& c) { return c.empty() ? -1 : c.rbegin()->first; }
+
+// Variables in a fixed order; the imaginary unit is not a polynomial
+// variable.
+void polyVariables(const Expr& e, std::set<std::string>& out)
+{
+	if (e->kind == Kind::Sym) {
+		if (e->name != kImag)
+			out.insert(e->name);
+		return;
+	}
+	for (const Expr& a : e->args)
+		polyVariables(a, out);
+}
+
+// Positive square root of an exact rational, if it is a square.
+bool squareRootOf(const Rational& v, Rational& root)
+{
+	if (v.sign() < 0)
+		return false;
+	BigInt n = v.numerator().isqrt();
+	BigInt d = v.denominator().isqrt();
+	if (n * n != v.numerator() || d * d != v.denominator())
+		return false;
+	root = Rational(n, d);
+	return true;
+}
+
+// a / b when the quotient is a polynomial, else nullptr.
+Expr exactQuotient(const Expr& a, const Expr& b)
+{
+	if (isZero(b))
+		return nullptr;
+	Expr q = cancel(mul(a, simpPow(b, mkInt(-1))));
+	if (hasVariableDenominator(q))
+		return nullptr;
+	return isZero(expand(sub(a, mul(b, q)))) ? q : nullptr;
+}
+
+// A step of the square-root algorithm. Steps are buffered until the whole
+// polynomial is known to be a square, so a failed attempt leaves no trace.
+struct SqrtStep {
+	const char* label;
+	Expr before, after;
+};
+
+// Square root of a polynomial in vars (sorted), by repeatedly taking the
+// square root of the leading coefficient and subtracting the square of the
+// partial root. If P = S^2, the coefficient of x^(m+k) in the remaining part
+// is 2*lead*S_k, so each unknown coefficient is an exact polynomial quotient.
+// Recursion terminates because each step drops one variable.
+Expr polynomialSqrtRec(const Expr& p, const std::vector<std::string>& vars)
+{
+	if (p->kind == Kind::Num) {
+		Rational r;
+		return squareRootOf(p->num, r) ? mkNum(r) : nullptr;
+	}
+	if (vars.empty() || isZero(p))
+		return nullptr;
+
+	const std::string& x = vars.front();
+	std::vector<std::string> rest(vars.begin() + 1, vars.end());
+	Coeffs c;
+	try {
+		c = collect(p, x);
+	} catch (const Error&) {
+		return nullptr;
+	}
+	long d = degreeOf(c);
+	if (d < 0 || d % 2 != 0)
+		return nullptr;
+	Expr lead = polynomialSqrtRec(c.at(d), rest);
+	if (!lead)
+		return nullptr;
+
+	std::vector<SqrtStep> steps;
+	steps.push_back({"leading term", mkCall("sqrt", Exprs{c.at(d)}), lead});
+
+	long m = d / 2;
+	Expr X = mkSym(x);
+	Expr s = mul(lead, simpPow(X, mkInt(m)));
+	Expr r = expand(sub(p, expand(mul(s, s))));
+	Expr twoLead = mul(mkInt(2), lead);
+	for (long k = m - 1; k >= 0; --k) {
+		Expr t = polyCoeff(r, x, m + k);
+		Expr q = exactQuotient(t, twoLead);
+		if (!q)
+			return nullptr;
+		steps.push_back({"next coefficient", rawDiv(t, twoLead), q});
+		s = add(s, mul(q, simpPow(X, mkInt(k))));
+		r = expand(sub(p, expand(mul(s, s))));
+	}
+	if (!isZero(r))
+		return nullptr;
+	for (const SqrtStep& st : steps)
+		trace::step(trace::Level::Methods, st.label, st.before, st.after);
+	trace::step(trace::Level::Methods, "verify the square", p, mkPow(s, mkInt(2)));
+	return s;
+}
+
+// cancel() and expand() can call back into simpPow(); that nested call must
+// not start another square-root search.
+thread_local bool g_inPolySqrt = false;
+
+Expr polynomialSqrt(const Expr& p)
+{
+	if (g_inPolySqrt)
+		return nullptr;
+	g_inPolySqrt = true;
+	Expr result;
+	try {
+		std::set<std::string> names;
+		polyVariables(p, names);
+		std::vector<std::string> vars(names.begin(), names.end());
+		result = polynomialSqrtRec(p, vars);
+	} catch (...) {
+		result = nullptr;
+	}
+	g_inPolySqrt = false;
+	return result;
+}
 
 } // namespace
 

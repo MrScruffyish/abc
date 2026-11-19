@@ -128,6 +128,9 @@ steps in the same way: polynomial long division shows each
 quotient/remainder update, `sum` its power sums and bound shift, `cancel`
 its Euclid steps, `solve` its augmented matrix, row elimination and back
 substitution, and `integrate` its by-parts terms and substitutions.
+`sqrt` of a perfect-square polynomial shows how the root is found: the
+square root of the leading coefficient, each next coefficient as an exact
+division, and a final check that the polynomial is the square of the root.
 
 The [`examples/`](examples/README.md) directory contains short input
 programs for algebra, equations, calculus, sums, assumptions and numbers,
@@ -443,6 +446,13 @@ sum([1, 2, 3])          -> 6
   and `sqrt(-4)` → `2*im` (the principal value). Powers of positive numbers
   combine: `(2^(1/2))^2` → `2`, `2^a*2^b` → `2^(a+b)`. Other roots of
   numbers stay as they are: `8^(1/3)`.
+* **Square roots of polynomials**: a perfect-square polynomial is restored
+  to its root, one variable at a time from the leading coefficient, e.g.
+  `sqrt(x^2+2*x+1)` → `abs(x+1)`, `sqrt(4*x^2+12*x+9)` → `abs(2*x+3)` and
+  `sqrt(x^2+2*x*y+y^2)` → `abs(x+y)`. As for `sqrt(x^2)`, the absolute
+  value is the principal root for a real variable; with `assume(x > 0)`
+  the first example gives `x+1`. Polynomials that are not squares are left
+  alone: `sqrt(x^2+1)` stays `(x^2+1)^(1/2)`.
 
 ### Complex numbers
 
@@ -977,7 +987,7 @@ pipes straight into gnuplot, `sort` or a spreadsheet.
 | `gcd(a, b, ...)`    | greatest common divisor of numbers or of polynomials        |
 | `lcm(a, b, ...)`    | least common multiple of numbers or of polynomials          |
 | `cancel(e)`         | `e` as one fraction with common factors cancelled           |
-| `sqrt(e)`           | `e^(1/2)`; exact for numbers where possible, `sqrt(-4)` → `2*im` |
+| `sqrt(e)`           | `e^(1/2)`; exact for numbers, perfect-square polynomials; `sqrt(-4)` → `2*im` |
 | `sin`, `cos`, `tan` | trigonometric functions (radians)                           |
 | `asin`, `acos`, `atan` | inverse trigonometric functions                          |
 | `exp(e)`, `ln(e)`   | exponential function and natural logarithm                  |
