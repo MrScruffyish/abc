@@ -8,11 +8,14 @@
 //    degree 4 (Ferrari), for numeric coefficients
 // Other factors are returned unsolved. Roots of the denominator are left out.
 #include "expr.hpp"
+#include "trace.hpp"
 
 #include <algorithm>
 #include <map>
 
 namespace xyz {
+
+Solutions solveImpl(const Expr& e, const std::string& x);
 
 namespace {
 
@@ -138,6 +141,14 @@ Exprs quartic(const std::vector<Rational>& co) // co[0] + ... + co[4] x^4
 
 Solutions solve(const Expr& e, const std::string& x)
 {
+	trace::Scope scope("solve");
+	Solutions s = solveImpl(e, x);
+	trace::step(trace::Level::Methods, "solve", mkCall("solve", {e, mkSym(x)}), mkList(s.roots));
+	return s;
+}
+
+Solutions solveImpl(const Expr& e, const std::string& x)
+{
 	Solutions s;
 	auto [p, q] = cancelParts(e);
 	if (isZero(p)) {
@@ -174,6 +185,12 @@ Solutions solve(const Expr& e, const std::string& x)
 			roots = quartic(c);
 		else
 			s.unsolved.push_back(f);
+		if (!roots.empty()) {
+			const char* method = n == 1 ? "linear equation"
+			                   : n == 2 ? "quadratic formula"
+			                   : n == 3 ? "cubic formula" : "quartic formula";
+			trace::step(trace::Level::Methods, method, f, mkList(roots));
+		}
 		for (const Expr& r : roots)
 			(r->kind == Kind::Num ? rational : others).push_back(r);
 	}

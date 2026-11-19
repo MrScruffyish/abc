@@ -1,4 +1,4 @@
-# xyz - small computer algebra system on top of bcl (bc's math library)
+# abc - small computer algebra system on top of bcl (bc's math library)
 # Copyright (C) 2026 Gunnar Lindholm
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -35,7 +35,7 @@ ASAN_OBJS := $(SRCS:src/%.cpp=$(BUILD)/asan/%.o)
 
 .PHONY: all test test-asan clean distclean
 
-all: xyz
+all: abc
 
 # Build bcl out-of-tree so the bc checkout is never modified.
 $(BCL_LIB):
@@ -59,24 +59,24 @@ $(RL_STAMP):
 	@mkdir -p $(BUILD) && rm -f $(BUILD)/readline-* && touch $@
 $(BUILD)/obj/main.o $(BUILD)/asan/main.o: $(RL_STAMP)
 
-xyz: $(OBJS) $(BCL_LIB)
+abc: $(OBJS) $(BCL_LIB)
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(BCL_LIB) $(RL_LIBS)
 
-$(BUILD)/xyz-asan: $(ASAN_OBJS) $(BCL_LIB)
+$(BUILD)/abc-asan: $(ASAN_OBJS) $(BCL_LIB)
 	$(CXX) $(SAN) -o $@ $(ASAN_OBJS) $(BCL_LIB) $(RL_LIBS)
 
-test: xyz
-	python3 tests/run_tests.py ./xyz
-	python3 tests/cli_tests.py ./xyz
-	python3 tests/random_tests.py ./xyz
+test: abc
+	python3 tests/run_tests.py ./abc
+	python3 tests/cli_tests.py ./abc
+	python3 tests/random_tests.py ./abc
 
-test-asan: $(BUILD)/xyz-asan
-	python3 tests/run_tests.py $(BUILD)/xyz-asan
-	python3 tests/cli_tests.py $(BUILD)/xyz-asan
-	python3 tests/random_tests.py $(BUILD)/xyz-asan --count 60
+test-asan: $(BUILD)/abc-asan
+	python3 tests/run_tests.py $(BUILD)/abc-asan
+	python3 tests/cli_tests.py $(BUILD)/abc-asan
+	python3 tests/random_tests.py $(BUILD)/abc-asan --count 60
 
 clean:
-	rm -rf xyz $(BUILD)/obj $(BUILD)/asan $(BUILD)/xyz-asan
+	rm -rf abc $(BUILD)/obj $(BUILD)/asan $(BUILD)/abc-asan
 
 distclean: clean
 	rm -rf $(BUILD)

@@ -1,4 +1,4 @@
-# xyz
+# abc
 
 A small command-line computer algebra system in the spirit of `bc`. It
 reads statements from standard input, files or `-e`, prints results, and
@@ -6,18 +6,23 @@ works well in pipes. All numbers are **exact**: arithmetic uses rationals
 of arbitrary-precision integers, and the integer arithmetic is done by
 **bcl**, the library form of [Gavin D. Howard's bc](https://github.com/gavinhoward/bc).
 
+`abc` is a fork of [`xyz`](../xyz) with one extra feature:
+`--show-your-work`, which records the steps of a calculation and exports
+them as LaTeX. The original `xyz` is left untouched; see `ABC-NOTES.md`
+for how to merge later `xyz` changes into this fork.
+
 ```console
-$ echo 'a := x; b := a*a+3; b; eval(b, x=1)' | xyz
+$ echo 'a := x; b := a*a+3; b; eval(b, x=1)' | abc
 4
-$ echo 'a := x; b := a*a+3; disp(b); eval(b, x=1)' | xyz
+$ echo 'a := x; b := a*a+3; disp(b); eval(b, x=1)' | abc
 x^2+3
 4
-$ xyz -e 'expand((x+2)^2)'
+$ abc -e 'expand((x+2)^2)'
 x^2+4*x+4
-$ xyz -e '1/3 + 1/6' -e 'num(1/7, 30)'
+$ abc -e '1/3 + 1/6' -e 'num(1/7, 30)'
 1/2
 0.142857142857142857142857142857
-$ xyz -e 'table(x, x^2, x = 1 to 3)'
+$ abc -e 'table(x, x^2, x = 1 to 3)'
 1	1
 2	4
 3	9
@@ -31,7 +36,7 @@ give it as `BC_DIR`:
 
 ```sh
 git clone https://github.com/gavinhoward/bc ../bc   # tested with 7.2.0 (1a8e2e65)
-make                  # builds bcl out-of-tree in build/bcl, then ./xyz
+make                  # builds bcl out-of-tree in build/bcl, then ./abc
 make test             # golden, CLI and randomised tests
 make test-asan        # the same under AddressSanitizer + UBSan
 make BC_DIR=/path/to/bc
@@ -49,16 +54,17 @@ The bc checkout is never modified. bcl is configured with
 ## Usage
 
 ```
-xyz [-h] [-v] [--imag=NAME] [--trunc] [-e expr]... [file]...
+abc [-h] [-v] [--imag=NAME] [--trunc] [--show-your-work]
+    [--work-level=LEVEL] [--work-file=FILE] [-e expr]... [file]...
 ```
 
-* With no arguments, `xyz` reads standard input. If standard input is a
+* With no arguments, `abc` reads standard input. If standard input is a
   terminal, each statement is run as soon as it is complete. Open
   parentheses or braces, or an `if (...)` still waiting for its `{`,
   continue onto the next line.
 * At a terminal, the arrow keys edit the line and step through earlier
   lines (if built with readline). What you type is echoed on stderr, so
-  `xyz > results.txt` still writes only results. Pipes and files are read
+  `abc > results.txt` still writes only results. Pipes and files are read
   without any line editing.
 * `-e EXPR` runs `EXPR`. You can repeat it. When `-e` is used, standard
   input is only read if `-` is given as a file.
@@ -67,10 +73,52 @@ xyz [-h] [-v] [--imag=NAME] [--trunc] [-e expr]... [file]...
   and output: with `--imag=i`, `(3+2i)*(1-i)` gives `5-i`, and `im` is an
   ordinary name. `i` can then not be used as a variable or loop variable.
 * `--trunc` makes `num()` truncate decimals like bc instead of rounding.
+* `--show-your-work` replaces the normal plain-text output with LaTeX
+  steps for every statement, and writes a complete LaTeX document to
+  `work.tex`; see [Showing your work](#showing-your-work).
 * Results go to stdout and errors go to stderr (`error: line N: ...`).
   Processing continues with the next statement after an error. The exit
   status is 0 if there were no errors, 1 if there were errors, and 2 for
   usage errors.
+
+## Showing your work
+
+With `--show-your-work`, stdout contains **only LaTeX**: one `verbatim`
+block with the input statement, followed by an `align*` block with the
+steps that led to its result. A self-contained article with the same
+blocks is written to `work.tex` (or the file given by `--work-file=FILE`).
+This is a tracing option: without it, `abc` behaves exactly like `xyz`.
+
+```console
+$ abc --show-your-work --work-file=work.tex -e 'solve(x^2-5*x+6=0, x)'
+
+\begin{verbatim}
+solve(x^2-5*x+6=0, x)
+\end{verbatim}
+\begin{align*}
+\text{solve: linear equation} &: x-3 = \left[3\right] \\
+\text{solve: linear equation} &: x-2 = \left[2\right] \\
+\text{solve: solve} &: \operatorname{solve}\left(x^{2}-5 x+6,x\right) = \left[2, 3\right] \\
+\text{solve: call} &: \operatorname{solve}\left(x^{2}-5 x+6 = 0, x\right) = x = 2,\quad x = 3 \\
+\text{result} &: x = 2,\quad x = 3 \\
+\end{align*}
+```
+
+`--work-level=LEVEL` (or `--show-your-work=LEVEL`) chooses how much is
+recorded; each level includes the ones before it:
+
+| Level     | What is shown |
+|-----------|---------------|
+| `top`     | the input, builtin calls and the final result |
+| `methods` | also named algorithms: expand, factor, quadratic formula, integration by parts, L'Hopital's rule, ... |
+| `all`     | also every expression rewrite and automatic simplification (the default with `--show-your-work`) |
+
+The trace is capped at 400 steps per statement and 8000 steps in total,
+so a runaway calculation cannot produce an enormous document; a note in
+the LaTeX says when steps were omitted. Errors are also reported on
+stderr as usual, and appear as `\textit{...}` steps in the trace.
+`transcript("file.tex")` keeps working and writes its own LaTeX document
+without the work steps.
 
 ## Language
 
@@ -374,7 +422,7 @@ sum([1, 2, 3])          -> 6
 ### Complex numbers
 
 `im` is the imaginary unit (as in Julia; `i`, `j` and `I` stay free for
-loops and other uses). Start xyz with `--imag=i` to call it `i` instead.
+loops and other uses). Start abc with `--imag=i` to call it `i` instead.
 It cannot be assigned. `im^2` is `-1`, and **all symbols are taken to be
 real**.
 
@@ -737,7 +785,7 @@ What follows from them:
 * `solve` keeps only the solutions that fit (real and with the right
   sign, integer).
 
-When typing at a terminal, xyz says once per session when a result could
+When typing at a terminal, abc says once per session when a result could
 be simplified with an assumption, for example:
 
 ```
@@ -970,11 +1018,11 @@ never done automatically: stored `:=` formulas keep their factors, and
 
 ### Saving your work
 
-`save("work.xyz")` writes every statement run so far in this session
-(typed, piped, from files or `-e`) to `work.xyz`, exactly as it was
-written, so `xyz work.xyz` repeats the session. `transcript("work.txt")`
+`save("work.abc")` writes every statement run so far in this session
+(typed, piped, from files or `-e`) to `work.abc`, exactly as it was
+written, so `abc work.abc` repeats the session. `transcript("work.txt")`
 writes the same statements, each followed by the output it produced as
-`#` comment lines: a readable record that can still be run with `xyz`.
+`#` comment lines: a readable record that can still be run with `abc`.
 
 ```
 a = 4
@@ -1133,7 +1181,7 @@ Things that are known to be missing or only partly done:
 
 ## License
 
-Copyright (C) 2026 Gunnar Lindholm. xyz is free software under the GNU
+Copyright (C) 2026 Gunnar Lindholm. abc is free software under the GNU
 General Public License v3 or later (`LICENSE`).
 
 The binary includes bcl from bc, which is under the BSD 2-Clause License

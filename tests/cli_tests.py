@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Command-line interface tests for xyz: pipes, files, -e, options.
+# Command-line interface tests for abc: pipes, files, -e, options.
 # Copyright (C) 2026 Gunnar Lindholm
 # SPDX-License-Identifier: GPL-3.0-or-later
 import os
@@ -21,7 +21,7 @@ def run(binary, args, stdin=""):
 
 
 def run_tty(binary, text):
-    """Runs xyz with a pseudo-terminal as stdin (interactive mode)."""
+    """Runs abc with a pseudo-terminal as stdin (interactive mode)."""
     master, slave = pty.openpty()
     p = subprocess.Popen([binary], stdin=slave, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT, text=True)
@@ -35,7 +35,7 @@ def run_tty(binary, text):
 
 def run_editing(binary, keys):
     """Runs xyz with stdin and stderr on a pseudo-terminal, so that line
-    editing is used if xyz was built with readline. Returns stdout."""
+    editing is used if abc was built with readline. Returns stdout."""
     master, slave = pty.openpty()
     env = dict(os.environ, TERM="xterm")
     p = subprocess.Popen([binary], stdin=slave, stdout=subprocess.PIPE,
@@ -74,7 +74,7 @@ def check(name, got, want):
 
 
 def main():
-    b = sys.argv[1] if len(sys.argv) > 1 else "./xyz"
+    b = sys.argv[1] if len(sys.argv) > 1 else "./abc"
     with tempfile.TemporaryDirectory() as d:
         f1 = os.path.join(d, "one.xyz")
         f2 = os.path.join(d, "two.xyz")
@@ -101,12 +101,12 @@ def main():
         check("quit in -e stops everything", run(b, ["-e", "disp(1); quit", f1]),
               ("1\n", "", 0))
         check("missing file", run(b, [os.path.join(d, "nope")])[1:],
-              (f"xyz: cannot open {os.path.join(d, 'nope')}\n", 1))
+              (f"abc: cannot open {os.path.join(d, 'nope')}\n", 1))
         check("unknown option exit status", run(b, ["-z"])[2], 2)
         check("-e needs an argument", run(b, ["-e"])[1:],
-              ("xyz: option -e needs an argument\n", 2))
+              ("abc: option -e needs an argument\n", 2))
         out, err, code = run(b, ["--help"])
-        check("--help", (out.startswith("usage: xyz"), err, code), (True, "", 0))
+        check("--help", (out.startswith("usage: abc"), err, code), (True, "", 0))
         out, err, code = run(b, ["-v"])
         check("--version mentions licenses",
               ("GPL" in out and "BSD 2-Clause" in out, code), (True, 0))
@@ -194,6 +194,48 @@ def main():
               run(b, ["-e", "disp(num(2/3, 5), num(pi, 4), num(-2/3, 3))"]),
               ("0.66667\t3.1416\t-0.667\n", "", 0))
 
+        # --show-your-work: steps as LaTeX on stdout and in a .tex document
+        worktex = os.path.join(d, "show.tex")
+        out, err, code = run(b, ["--show-your-work", "--work-file=" + worktex,
+                                "-e", "expand((x+1)^2)"])
+        check("show-your-work: stdout is LaTeX",
+              all(s in out for s in ("\\begin{verbatim}", "\\begin{align*}",
+                                     "\\text{result} &: x^{2}+2 x+1", "\\end{align*}"))
+              and "x^2+2*x+1\n" not in out, True)
+        check("show-your-work: clean stderr and exit", (err, code), ("", 0))
+        with open(worktex) as f:
+            doc = f.read()
+        check("show-your-work: complete .tex document",
+              all(s in doc for s in (
+                  "\\documentclass{article}", "\\usepackage{amsmath}",
+                  "\\begin{verbatim}\nexpand((x+1)^2)\n\\end{verbatim}",
+                  "\\text{result} &: x^{2}+2 x+1", "\\end{document}")), True)
+        out, _, _ = run(b, ["--show-your-work=top", "--work-file=" + worktex,
+                            "-e", "expand((x+1)^2)"])
+        check("work-level=top omits rewrites",
+              ("combine terms" not in out and "\\text{result}" in out), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "expand((x+1)^2)"])
+        check("work-level=methods keeps named methods",
+              ("\\text{expand: expand}" in out and "combine terms" not in out), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-file=" + worktex,
+                            "-e", "1+1", "-e", "2+2"])
+        check("work trace has one block per statement",
+              out.count("\\begin{verbatim}"), 2)
+        check("bad work level", run(b, ["--work-level=nope", "-e", "1"])[1:],
+              ("abc: --work-level: must be top, methods or all\n", 2))
+        check("empty work file name", run(b, ["--work-file=", "-e", "1"])[1:],
+              ("abc: --work-file needs a file name\n", 2))
+        out, _, _ = run(b, ["--help"])
+        check("help mentions --show-your-work", "--show-your-work" in out, True)
+        if shutil.which("pdflatex"):
+            p = subprocess.run(["pdflatex", "-interaction=nonstopmode",
+                                "-halt-on-error", "show.tex"], cwd=d,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            check("work trace compiles with pdflatex", p.returncode, 0)
+        else:
+            print("skipping work-trace pdflatex check (not installed)")
+
         # --imag=NAME
         check("--imag=i: input and output use i",
               run(b, ["--imag=i", "-e", "disp((3+2i)*(1-i), Re(1/(x+i)), num(i/3, 3))"]),
@@ -204,7 +246,7 @@ def main():
               run(b, ["--imag=i", "-e", "i = 3"])[1],
               "error: line 1: 'i' is the imaginary unit and cannot be assigned\n")
         check("--imag needs a usable name", run(b, ["--imag=if", "-e", "1"])[1:],
-              ("xyz: --imag: 'if' cannot be used as a name\n", 2))
+              ("abc: --imag: 'if' cannot be used as a name\n", 2))
         run(b, ["--imag=i", "-e", "a = 2i;", "-e", f'save("{work}");'])
         with open(work) as f:
             check("saved files say which unit they need", f.read(),

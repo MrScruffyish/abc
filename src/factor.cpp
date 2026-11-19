@@ -15,12 +15,15 @@
 //    variable, then the square-free parts, and homogeneous polynomials in
 //    two variables are factored like polynomials in one (x^2 - y^2).
 #include "expr.hpp"
+#include "trace.hpp"
 
 #include <algorithm>
 #include <functional>
 #include <set>
 
 namespace xyz {
+
+Expr factorImpl(const Expr& e, bool overGaussian);
 
 namespace {
 
@@ -1167,6 +1170,14 @@ Expr factorGaussian(const Expr& e, Expr p, Expr q)
 }
 
 Expr factor(const Expr& e, bool overGaussian)
+{
+	trace::Scope scope("factor");
+	Expr r = factorImpl(e, overGaussian);
+	trace::step(trace::Level::Methods, "factor", e, r);
+	return r;
+}
+
+Expr factorImpl(const Expr& e, bool overGaussian)
 {
 	if (e->kind == Kind::Num)
 		return factorNumber(e->num);

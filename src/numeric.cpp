@@ -14,11 +14,14 @@
 // for. There is no proof that every digit is right: the guard digits make
 // a wrong last digit very unlikely, but not impossible.
 #include "expr.hpp"
+#include "trace.hpp"
 
 #include <map>
 #include <optional>
 
 namespace xyz {
+
+Expr numericImpl(const Expr& e, size_t digits);
 
 namespace {
 
@@ -572,6 +575,14 @@ void clearNumericCaches()
 }
 
 Expr numeric(const Expr& e, size_t digits)
+{
+	trace::Scope scope("num");
+	Expr r = numericImpl(e, digits);
+	trace::step(trace::Level::Methods, "decimal approximation", e, r);
+	return r;
+}
+
+Expr numericImpl(const Expr& e, size_t digits)
 {
 	if (e->kind == Kind::Num && e->num.isInt())
 		return e;

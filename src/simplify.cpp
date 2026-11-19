@@ -17,11 +17,20 @@
 //  - products of sums and powers of sums are NOT multiplied out; that is
 //    what expand() is for.
 #include "expr.hpp"
+#include "trace.hpp"
 
 #include <algorithm>
 #include <map>
 
 namespace xyz {
+
+// Wrappers record the automatic rewrites when --show-your-work is on. The
+// real work stays in the *Impl functions below.
+Expr simpAddImpl(const Exprs& in);
+Expr simpMulImpl(const Exprs& in);
+Expr simpPowImpl(const Expr& b, const Expr& e);
+Expr expandImpl(const Expr& n);
+Expr diffImpl(const Expr& n, const std::string& x);
 
 namespace {
 
@@ -386,6 +395,13 @@ void sinCosSquares(Terms& terms, Rational& konst, const char* a = "sin", const c
 
 Expr simpAdd(const Exprs& in)
 {
+	Expr r = simpAddImpl(in);
+	trace::step(trace::Level::All, "combine terms", mkNode(Kind::Add, in), r);
+	return r;
+}
+
+Expr simpAddImpl(const Exprs& in)
+{
 	Rational konst;
 	// rest -> summed coefficient; ordered so equal rests merge
 	std::map<Expr, Rational, ExprLess> terms;
@@ -438,6 +454,13 @@ Expr simpAdd(const Exprs& in)
 // -------------------------------------------------------------- products
 
 Expr simpMul(const Exprs& in)
+{
+	Expr r = simpMulImpl(in);
+	trace::step(trace::Level::All, "multiply factors", mkNode(Kind::Mul, in), r);
+	return r;
+}
+
+Expr simpMulImpl(const Exprs& in)
 {
 	Rational coeff(1);
 	std::map<Expr, Exprs, ExprLess> bases; // base -> exponents
@@ -551,6 +574,13 @@ Expr simpMul(const Exprs& in)
 // ---------------------------------------------------------------- powers
 
 Expr simpPow(const Expr& b, const Expr& e)
+{
+	Expr r = simpPowImpl(b, e);
+	trace::step(trace::Level::All, "simplify power", mkPow(b, e), r);
+	return r;
+}
+
+Expr simpPowImpl(const Expr& b, const Expr& e)
 {
 	checkComputable(b);
 	checkComputable(e);
@@ -755,6 +785,14 @@ Expr mulExpand(const Expr& a, const Expr& b)
 
 Expr expand(const Expr& n)
 {
+	trace::Scope scope("expand");
+	Expr r = expandImpl(n);
+	trace::step(trace::Level::Methods, "expand", n, r);
+	return r;
+}
+
+Expr expandImpl(const Expr& n)
+{
 	checkComputable(n);
 	switch (n->kind) {
 	case Kind::Add: {
@@ -795,6 +833,14 @@ Expr expand(const Expr& n)
 // ------------------------------------------------------- differentiation
 
 Expr diff(const Expr& n, const std::string& x)
+{
+	trace::Scope scope("diff");
+	Expr r = diffImpl(n, x);
+	trace::step(trace::Level::Methods, "differentiate", n, r);
+	return r;
+}
+
+Expr diffImpl(const Expr& n, const std::string& x)
 {
 	checkComputable(n);
 	switch (n->kind) {

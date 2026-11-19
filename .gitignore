@@ -66,6 +66,6 @@ vcpkg_installed/
 Testing/
 .cache/
 
-# xyz
-/xyz
+# abc
+/abc
 __pycache__/

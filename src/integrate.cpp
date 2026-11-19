@@ -14,6 +14,7 @@
 //  - products and powers of sin and cos (with trigreduce)
 // Logarithms are written without absolute values: ln(x), not ln|x|.
 #include "expr.hpp"
+#include "trace.hpp"
 
 #include <functional>
 #include <map>
@@ -21,6 +22,8 @@
 #include <set>
 
 namespace xyz {
+
+Expr integrateImpl(const Expr& f, const std::string& x);
 
 namespace {
 
@@ -183,19 +186,31 @@ struct Integrator {
 				return std::nullopt;
 			}
 		}
-		if (Opt r = table(f))
+		if (Opt r = table(f)) {
+			trace::step(trace::Level::Methods, "table lookup", f, *r);
 			return r;
+		}
 		if (isRationalIn(f, x))
-			if (Opt r = rational(f, depth))
+			if (Opt r = rational(f, depth)) {
+				trace::step(trace::Level::Methods, "partial fractions", f, *r);
 				return r;
-		if (Opt r = roots(f))
+			}
+		if (Opt r = roots(f)) {
+			trace::step(trace::Level::Methods, "root substitution", f, *r);
 			return r;
-		if (Opt r = byParts(f, depth))
+		}
+		if (Opt r = byParts(f, depth)) {
+			trace::step(trace::Level::Methods, "integration by parts", f, *r);
 			return r;
-		if (Opt r = substitution(f, depth))
+		}
+		if (Opt r = substitution(f, depth)) {
+			trace::step(trace::Level::Methods, "substitution", f, *r);
 			return r;
-		if (Opt r = trig(f, depth))
+		}
+		if (Opt r = trig(f, depth)) {
+			trace::step(trace::Level::Methods, "trigonometric identity", f, *r);
 			return r;
+		}
 		Expr e = expand(f);
 		if (!equal(e, f) && e->kind == Kind::Add)
 			return integ(e, depth + 1);
@@ -600,6 +615,14 @@ Expr tidy(const Expr& e, const std::string& x)
 } // namespace
 
 Expr integrate(const Expr& f, const std::string& x)
+{
+	trace::Scope scope("integrate");
+	Expr r = integrateImpl(f, x);
+	trace::step(trace::Level::Methods, "integrate", mkCall("integrate", {f, mkSym(x)}), r);
+	return r;
+}
+
+Expr integrateImpl(const Expr& f, const std::string& x)
 {
 	Integrator in(x);
 	if (f->kind == Kind::Add) { // the parts found, and the rest unevaluated

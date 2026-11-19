@@ -4,11 +4,14 @@
 // Finite symbolic summation for polynomial summands.
 // Uses Faulhaber's formula: sum_{k=1}^{n} k^p expressed as a polynomial in n.
 #include "expr.hpp"
+#include "trace.hpp"
 
 #include <map>
 #include <vector>
 
 namespace xyz {
+
+Expr symbolicSumImpl(const Expr& f, const std::string& var, const Expr& from, const Expr& to);
 
 namespace {
 
@@ -64,6 +67,14 @@ Expr powerSum(long p, const Expr& N)
 } // namespace
 
 Expr symbolicSum(const Expr& f, const std::string& var, const Expr& from, const Expr& to)
+{
+	trace::Scope scope("sum");
+	Expr r = symbolicSumImpl(f, var, from, to);
+	trace::step(trace::Level::Methods, "Faulhaber's formula", f, r);
+	return r;
+}
+
+Expr symbolicSumImpl(const Expr& f, const std::string& var, const Expr& from, const Expr& to)
 {
 	std::map<long, Expr> cm;
 	try {

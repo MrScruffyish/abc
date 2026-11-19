@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Gunnar Lindholm
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "interpreter.hpp"
+#include "trace.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -444,6 +445,14 @@ Expr Interpreter::resolve(const Expr& e, const Ctx& c) { return heldValue(resolv
 
 Expr Interpreter::resolveKeep(const Expr& e, const Ctx& c)
 {
+	Expr r = resolveKeepImpl(e, c);
+	if (!equal(e, r))
+		trace::step(trace::Level::All, "evaluate", e, r);
+	return r;
+}
+
+Expr Interpreter::resolveKeepImpl(const Expr& e, const Ctx& c)
+{
 	auto hit = c.memo->find(e.get());
 	if (hit != c.memo->end())
 		return hit->second;
@@ -821,6 +830,14 @@ Expr Interpreter::callSolve(const Expr& e, const Ctx& c)
 }
 
 Expr Interpreter::callBuiltin(const Expr& e, const Ctx& c)
+{
+	trace::Scope scope(e->name);
+	Expr r = callBuiltinImpl(e, c);
+	trace::step(trace::Level::Top, "call", e, r);
+	return r;
+}
+
+Expr Interpreter::callBuiltinImpl(const Expr& e, const Ctx& c)
 {
 	const std::string& name = e->name;
 	const Builtin* b = findBuiltin(name);
@@ -1466,42 +1483,53 @@ void Interpreter::saveSession(const std::string& file, bool withOutput, bool sho
 void Interpreter::emitValue(const Expr& v)
 {
 	shown_.push_back(v);
-	out_ << toString(v) << '\n';
+	if (trace::level() == trace::Level::Off)
+		out_ << toString(v) << '\n'; // with tracing, stdout is LaTeX only
 	if (items_)
 		items_->push_back({OutItem::Type::Value, {v}, {}, {}, {}});
+	trace::result(v);
 }
 
 void Interpreter::emitLatex(const Expr& v)
 {
-	out_ << toLatex(v) << '\n';
+	if (trace::level() == trace::Level::Off)
+		out_ << toLatex(v) << '\n';
 	if (items_)
 		items_->push_back({OutItem::Type::Value, {v}, {}, {}, {}});
+	trace::result(v);
 }
 
 void Interpreter::emitDef(const std::string& name, const Def& d)
 {
 	shown_.push_back(d.body);
-	out_ << defString(name, d) << '\n';
+	if (trace::level() == trace::Level::Off)
+		out_ << defString(name, d) << '\n';
 	if (items_)
 		items_->push_back({OutItem::Type::Def, {}, name, d, {}});
+	trace::step(trace::Level::Top, "store", mkSym(name), d.body);
 }
 
 void Interpreter::emitRow(const Exprs& v)
 {
 	shown_.insert(shown_.end(), v.begin(), v.end());
-	std::string line;
-	for (size_t i = 0; i < v.size(); i++)
-		line += (i ? "\t" : "") + toString(v[i]);
-	out_ << line << '\n';
+	if (trace::level() == trace::Level::Off) {
+		std::string line;
+		for (size_t i = 0; i < v.size(); i++)
+			line += (i ? "\t" : "") + toString(v[i]);
+		out_ << line << '\n';
+	}
 	if (items_)
 		items_->push_back({OutItem::Type::Row, v, {}, {}, {}});
+	trace::result(v);
 }
 
 void Interpreter::emitText(const std::string& t)
 {
-	out_ << t << '\n';
+	if (trace::level() == trace::Level::Off)
+		out_ << t << '\n';
 	if (items_)
 		items_->push_back({OutItem::Type::Text, {}, {}, {}, t});
+	trace::note(trace::Level::Top, t);
 }
 
 std::string Interpreter::defLatex(const std::string& name, const Def& d) const
@@ -1661,6 +1689,7 @@ void Interpreter::report(int line, const std::string& msg)
 	err_.flush();
 	if (items_)
 		items_->push_back({OutItem::Type::Error, {}, {}, {}, text});
+	trace::note(trace::Level::Top, text);
 }
 
 int Interpreter::run(const std::string& text)
@@ -1681,6 +1710,8 @@ int Interpreter::run(const std::string& text)
 			break;
 		IfState next = IfState::None;
 		curLine_ = s->line;
+		if (s->type != Stmt::Type::Empty)
+			trace::beginStatement(s->source);
 		// record the statement and its output for save() / transcript(),
 		// except save and transcript themselves
 		bool record = s->type != Stmt::Type::Empty && !s->source.empty() &&
@@ -1722,6 +1753,8 @@ int Interpreter::run(const std::string& text)
 		err_.flush();
 		outBuf_.sink = errBuf_.sink = nullptr;
 		items_ = nullptr;
+		if (s->type != Stmt::Type::Empty)
+			trace::endStatement();
 		if (interactive_ && !hinted_) { // once: what an assumption would do
 			for (const Expr& v : shown_) {
 				std::string h = assumptionHint(v);

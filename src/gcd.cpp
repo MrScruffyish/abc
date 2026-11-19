@@ -11,10 +11,13 @@
 // and the primitive PRS is Euclid's algorithm with pseudo-remainders whose
 // content is removed in every step.
 #include "expr.hpp"
+#include "trace.hpp"
 
 #include <set>
 
 namespace xyz {
+
+Expr cancelImpl(const Expr& e);
 
 // ---------------------------------------------------------------- numbers
 
@@ -352,6 +355,14 @@ Expr polyLcm(const Expr& a, const Expr& b)
 }
 
 Expr cancel(const Expr& e)
+{
+	trace::Scope scope("cancel");
+	Expr r = cancelImpl(e);
+	trace::step(trace::Level::Methods, "cancel common factors", e, r);
+	return r;
+}
+
+Expr cancelImpl(const Expr& e)
 {
 	if (e->kind == Kind::Dec)
 		throw Error("a num() result cannot be used in further calculations");

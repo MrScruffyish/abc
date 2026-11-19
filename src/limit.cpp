@@ -14,10 +14,13 @@
 // the point. It is not a complete method: it gives an error when it cannot
 // decide.
 #include "expr.hpp"
+#include "trace.hpp"
 
 #include <functional>
 
 namespace xyz {
+
+Expr limitImpl(const Expr& f, const std::string& x, const Expr& a, int dir);
 
 namespace {
 
@@ -152,14 +155,26 @@ struct Limit {
 			}
 		}
 		switch (g->kind) {
-		case Kind::Add:
-			return limSum(g, depth);
-		case Kind::Mul:
-			return limProduct(g, depth);
-		case Kind::Pow:
-			return limPow(g, depth);
-		case Kind::Call:
-			return limCall(g, depth);
+		case Kind::Add: {
+			Expr r = limSum(g, depth);
+			trace::step(trace::Level::Methods, "limit of a sum", g, r);
+			return r;
+		}
+		case Kind::Mul: {
+			Expr r = limProduct(g, depth);
+			trace::step(trace::Level::Methods, "limit of a product", g, r);
+			return r;
+		}
+		case Kind::Pow: {
+			Expr r = limPow(g, depth);
+			trace::step(trace::Level::Methods, "limit of a power", g, r);
+			return r;
+		}
+		case Kind::Call: {
+			Expr r = limCall(g, depth);
+			trace::step(trace::Level::Methods, "limit of a function", g, r);
+			return r;
+		}
 		default:
 			throw NoLimit("limit: cannot find the limit of " + toString(f));
 		}
@@ -362,6 +377,7 @@ struct Limit {
 		if (isZero(dq))
 			throw NoLimit("limit: cannot find the limit of " + toString(f));
 		Expr r = dv(dp, dq);
+		trace::step(trace::Level::Methods, "L'Hopital's rule", f, r);
 		if (isRationalFn(r) && hasVariableDenominator(r))
 			r = cancel(r);
 		return lim(r, depth + 1);
@@ -500,6 +516,14 @@ struct Limit {
 } // namespace
 
 Expr limit(const Expr& f, const std::string& x, const Expr& a, int dir)
+{
+	trace::Scope scope("limit");
+	Expr r = limitImpl(f, x, a, dir);
+	trace::step(trace::Level::Methods, "limit", mkCall("limit", {f, mkSym(x), a}), r);
+	return r;
+}
+
+Expr limitImpl(const Expr& f, const std::string& x, const Expr& a, int dir)
 {
 	int s = infSign(a);
 	if (s < 0) { // x = -y, y -> inf

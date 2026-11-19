@@ -1,4 +1,4 @@
-// xyz - a small computer algebra system that uses bcl (the library form of
+// abc - a small computer algebra system that uses bcl (the library form of
 // Gavin D. Howard's bc) for exact arbitrary-precision arithmetic.
 //
 // Copyright (C) 2026 Gunnar Lindholm
@@ -17,6 +17,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "interpreter.hpp"
+#include "trace.hpp"
 
 #include <unistd.h>
 
@@ -38,9 +39,23 @@ namespace {
 
 const char* const kVersion = "0.1.0";
 
+bool parseWorkLevel(const std::string& s, xyz::trace::Level& level)
+{
+	if (s == "top")
+		level = xyz::trace::Level::Top;
+	else if (s == "methods")
+		level = xyz::trace::Level::Methods;
+	else if (s == "all")
+		level = xyz::trace::Level::All;
+	else
+		return false;
+	return true;
+}
+
 void usage(std::ostream& out)
 {
-	out << "usage: xyz [-h] [-v] [--imag=NAME] [--trunc] [-e expr]... [file]...\n"
+	out << "usage: abc [-h] [-v] [--imag=NAME] [--trunc] [--show-your-work]\n"
+	       "           [--work-level=LEVEL] [--work-file=FILE] [-e expr]... [file]...\n"
 	       "\n"
 	       "Reads statements from the files (or standard input). A statement\n"
 	       "prints its result unless it ends with ';'.\n"
@@ -51,6 +66,10 @@ void usage(std::ostream& out)
 	       "                         e.g. --imag=i\n"
 	       "      --trunc            num() truncates decimals like bc instead of\n"
 	       "                         rounding\n"
+	       "      --show-your-work   show the steps to each result as LaTeX on stdout\n"
+	       "                         and write a complete .tex document\n"
+	       "      --work-level=LEVEL top, methods or all (default all with the flag)\n"
+	       "      --work-file=FILE   the .tex document (default work.tex)\n"
 	       "  -h, --help             show this help\n"
 	       "  -v, --version          show version and license\n"
 	       "\n"
@@ -77,7 +96,7 @@ void usage(std::ostream& out)
 
 void version()
 {
-	std::cout << "xyz " << kVersion << "\n"
+	std::cout << "abc " << kVersion << "\n"
 	          << "Copyright (C) 2026 Gunnar Lindholm\n"
 	             "License GPLv3+: GNU GPL version 3 or later "
 	             "<https://gnu.org/licenses/gpl.html>.\n"
@@ -126,7 +145,7 @@ int runInteractive(xyz::Interpreter& interp)
 	bool editing = false;
 #ifdef XYZ_READLINE
 	// readline echoes what is typed; send that to stderr (the terminal) so
-	// that stdout only gets results, e.g. with  xyz > results.txt
+	// that stdout only gets results, e.g. with  abc > results.txt
 	editing = isatty(STDERR_FILENO) != 0;
 	if (editing) {
 		rl_outstream = stderr;
@@ -149,6 +168,9 @@ int realMain(int argc, char** argv)
 {
 	std::vector<std::string> exprs, files;
 	bool optsDone = false;
+	bool showWork = false;
+	xyz::trace::Level workLevel = xyz::trace::Level::All;
+	std::string workFile = "work.tex";
 	for (int i = 1; i < argc; i++) {
 		std::string a = argv[i];
 		if (optsDone || a == "-" || a.empty() || a[0] != '-') {
@@ -161,17 +183,36 @@ int realMain(int argc, char** argv)
 			return 0;
 		} else if (a == "-e" || a == "--expression") {
 			if (++i >= argc) {
-				std::cerr << "xyz: option " << a << " needs an argument\n";
+				std::cerr << "abc: option " << a << " needs an argument\n";
 				return 2;
 			}
 			exprs.push_back(argv[i]);
 		} else if (a == "--trunc") {
 			xyz::setNumTruncate(true);
+		} else if (a == "--show-your-work") {
+			showWork = true;
+		} else if (a.rfind("--show-your-work=", 0) == 0) {
+			showWork = true;
+			if (!parseWorkLevel(a.substr(17), workLevel)) {
+				std::cerr << "abc: --show-your-work: level must be top, methods or all\n";
+				return 2;
+			}
+		} else if (a.rfind("--work-level=", 0) == 0) {
+			if (!parseWorkLevel(a.substr(13), workLevel)) {
+				std::cerr << "abc: --work-level: must be top, methods or all\n";
+				return 2;
+			}
+		} else if (a.rfind("--work-file=", 0) == 0) {
+			workFile = a.substr(12);
+			if (workFile.empty()) {
+				std::cerr << "abc: --work-file needs a file name\n";
+				return 2;
+			}
 		} else if (a == "--imag" || a.rfind("--imag=", 0) == 0) {
 			std::string name;
 			if (a == "--imag") {
 				if (++i >= argc) {
-					std::cerr << "xyz: option --imag needs a name\n";
+					std::cerr << "abc: option --imag needs a name\n";
 					return 2;
 				}
 				name = argv[i];
@@ -182,7 +223,7 @@ int realMain(int argc, char** argv)
 			for (char ch : name)
 				ok = ok && (std::isalnum(static_cast<unsigned char>(ch)) || ch == '_');
 			if (!ok || xyz::isKeyword(name) || name == "pi") {
-				std::cerr << "xyz: --imag: '" << name << "' cannot be used as a name\n";
+				std::cerr << "abc: --imag: '" << name << "' cannot be used as a name\n";
 				return 2;
 			}
 			xyz::setImagName(name);
@@ -191,11 +232,16 @@ int realMain(int argc, char** argv)
 		} else if (a == "--") {
 			optsDone = true;
 		} else {
-			std::cerr << "xyz: unknown option " << a << "\n";
+			std::cerr << "abc: unknown option " << a << "\n";
 			usage(std::cerr);
 			return 2;
 		}
 	}
+
+	xyz::trace::reset();
+	xyz::trace::setStream(std::cout);
+	xyz::trace::setWorkFile(workFile);
+	xyz::trace::setLevel(showWork ? workLevel : xyz::trace::Level::Off);
 
 	xyz::BclSession bcl;
 	int errors = 0;
@@ -221,7 +267,7 @@ int realMain(int argc, char** argv)
 			}
 			std::ifstream in(f);
 			if (!in) {
-				std::cerr << "xyz: cannot open " << f << "\n";
+				std::cerr << "abc: cannot open " << f << "\n";
 				errors++;
 				continue;
 			}
@@ -229,6 +275,10 @@ int realMain(int argc, char** argv)
 		}
 		xyz::clearNumericCaches();
 	} // all numbers must be freed before bcl shuts down
+	if (showWork && !xyz::trace::writeDocument(workFile)) {
+		std::cerr << "abc: cannot write work file " << workFile << "\n";
+		errors++;
+	}
 	return errors ? 1 : 0;
 }
 
@@ -239,9 +289,9 @@ int main(int argc, char** argv)
 	try {
 		return realMain(argc, argv);
 	} catch (const std::bad_alloc&) {
-		std::cerr << "xyz: out of memory\n";
+		std::cerr << "abc: out of memory\n";
 	} catch (const std::exception& e) {
-		std::cerr << "xyz: fatal: " << e.what() << "\n";
+		std::cerr << "abc: fatal: " << e.what() << "\n";
 	}
 	return 2;
 }

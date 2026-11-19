@@ -122,9 +122,11 @@ private:
 	// evaluation
 	Expr resolve(const Expr& e, const Ctx& c);     // the value (Held: its value)
 	Expr resolveKeep(const Expr& e, const Ctx& c); // Held results kept, to be shown
+	Expr resolveKeepImpl(const Expr& e, const Ctx& c);
 	Expr lookup(const Expr& sym, const Ctx& c);
 	Expr call(const Expr& e, const Ctx& c);
 	Expr callBuiltin(const Expr& e, const Ctx& c);
+	Expr callBuiltinImpl(const Expr& e, const Ctx& c);
 	Expr callSolve(const Expr& e, const Ctx& c);
 	Expr callUser(const Expr& e, const Def& d, const Ctx& c);
 	Expr resolveFree(const Expr& e, const std::string& x, const Ctx& c);
