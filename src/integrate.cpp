@@ -341,6 +341,8 @@ struct Integrator {
 			return dv(simpAdd(t), q);
 		}
 		auto [s, r] = polyDivide(p, q, x);
+		trace::step(trace::Level::Methods, "divide numerator by denominator",
+		            mkList(Exprs{p, q}), mkList(Exprs{s, r}));
 		Factored fq = factorPolynomial(q);
 		// ansatz: sum over the factors l^m of A_1/l + ... + A_m/l^m (linear l),
 		// (B_1 x + C_1)/l + ... (quadratic l); factors without x go to the content
@@ -389,6 +391,11 @@ struct Integrator {
 					return ls.values[i];
 			return sym;
 		};
+		Exprs coefficients;
+		for (const std::string& u : unknowns)
+			coefficients.push_back(value(mkSym(u)));
+		trace::step(trace::Level::Methods, "solve coefficients",
+		            mkList(eqs), mkList(coefficients));
 		Exprs out;
 		if (Opt ps = rational(s, depth))
 			out.push_back(*ps);
@@ -483,6 +490,8 @@ struct Integrator {
 					out.push_back(mul(mkInt(sign), mul(D, G)));
 					D = diff(D, x);
 				}
+				trace::step(trace::Level::Methods, "by-parts terms",
+				            f, mkNode(Kind::Add, out));
 				return simpAdd(out);
 			}
 			if (h->kind == Kind::Call && h->args.size() == 1 &&
@@ -557,8 +566,14 @@ struct Integrator {
 			}
 			Integrator in(t->name);
 			Opt G = in.integ(rt, depth + 1);
-			if (G)
-				return substitute(*G, t->name, u);
+			if (G) {
+				trace::step(trace::Level::Methods, "rewrite the differential", f, r);
+				trace::step(trace::Level::Methods, "substitute " + t->name, r, rt);
+				trace::step(trace::Level::Methods, "integrate in " + t->name, rt, *G);
+				Expr back = substitute(*G, t->name, u);
+				trace::step(trace::Level::Methods, "back substitute", *G, back);
+				return back;
+			}
 		}
 		return std::nullopt;
 	}

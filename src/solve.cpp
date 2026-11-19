@@ -243,6 +243,14 @@ LinearSolution solveLinear(const Exprs& es, const std::vector<std::string>& xs)
 		row.push_back(neg(rest));
 		rows.push_back(row);
 	}
+	auto matrixExpr = [](const std::vector<Exprs>& m) {
+		Exprs rs;
+		for (const Exprs& row : m)
+			rs.push_back(mkList(row));
+		return mkList(rs);
+	};
+	trace::step(trace::Level::Methods, "augmented matrix", mkList(es), matrixExpr(rows));
+
 	// elimination to reduced row echelon form
 	std::vector<long> pivotCol;
 	size_t r = 0;
@@ -252,6 +260,7 @@ LinearSolution solveLinear(const Exprs& es, const std::vector<std::string>& xs)
 			piv++;
 		if (piv == rows.size())
 			continue;
+		std::vector<Exprs> before = rows;
 		std::swap(rows[r], rows[piv]);
 		Expr inv = simpPow(rows[r][col], mkInt(-1));
 		for (Expr& v : rows[r])
@@ -263,6 +272,8 @@ LinearSolution solveLinear(const Exprs& es, const std::vector<std::string>& xs)
 			for (size_t j = 0; j <= n; j++)
 				rows[i][j] = cancel(sub(rows[i][j], mul(f, rows[r][j])));
 		}
+		trace::step(trace::Level::Methods, "eliminate column",
+		            matrixExpr(before), matrixExpr(rows));
 		pivotCol.push_back(static_cast<long>(col));
 		r++;
 	}
@@ -285,6 +296,10 @@ LinearSolution solveLinear(const Exprs& es, const std::vector<std::string>& xs)
 		s.values[col] = cancel(v);
 		s.free[col] = false;
 	}
+	Exprs values;
+	for (const Expr& v : s.values)
+		values.push_back(v);
+	trace::step(trace::Level::Methods, "back substitute", matrixExpr(rows), mkList(values));
 	return s;
 }
 

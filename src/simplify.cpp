@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <map>
+#include <string>
 
 namespace xyz {
 
@@ -778,7 +779,11 @@ Expr mulExpand(const Expr& a, const Expr& b)
 			Expr p = mul(x, y);
 			out.push_back(needsExpand(p) ? expand(p) : p);
 		}
-	return simpAdd(out);
+	Expr sum = simpAdd(out);
+	if (out.size() >= 3)
+		trace::step(trace::Level::Methods, "sum the terms",
+		            mkNode(Kind::Add, out), sum);
+	return sum;
 }
 
 // Show a multiplication made while expanding a power. Multiplying the
@@ -848,10 +853,93 @@ Expr expandImpl(const Expr& n)
 
 // ------------------------------------------------------- differentiation
 
+namespace {
+
+// The polynomial helpers below are defined later in this file.
+using Coeffs = std::map<long, Expr>;
+Coeffs collect(const Expr& n, const std::string& x);
+long degreeOf(const Coeffs& c);
+
+// Set while a difference quotient is being evaluated by limit(). L'Hopital's
+// rule inside limit() calls diff(), and that diff() must use the ordinary
+// rules instead of trying the limit definition again.
+thread_local bool g_inLimitDerivative = false;
+
+// Pick an increment that is not already used in n and is not the variable.
+std::string freshIncrement(const Expr& n, const std::string& x)
+{
+	if (x != "h" && !containsSym(n, "h"))
+		return "h";
+	for (int i = 0; i < 1000; i++) {
+		std::string s = "~h" + (i ? std::to_string(i) : "");
+		if (s != x && !containsSym(n, s))
+			return s;
+	}
+	return "~h";
+}
+
+// Differentiate a simple polynomial by its difference quotient:
+//   f'(x) = lim_{h->0} (f(x+h)-f(x))/h.
+// Returns false for anything that is not a small polynomial, in which case
+// the ordinary differentiation rules are used.
+bool diffByLimit(const Expr& n, const std::string& x, Expr& result)
+{
+	if (g_inLimitDerivative)
+		return false;
+	Coeffs c;
+	try {
+		c = collect(n, x);
+	} catch (const Error&) {
+		return false;
+	}
+	long deg = degreeOf(c);
+	if (deg < 1 || deg > 20 || c.size() > 30)
+		return false;
+
+	std::string hname = freshIncrement(n, x);
+	Expr h = mkSym(hname);
+	Expr X = mkSym(x);
+	Expr shifted = substitute(n, x, add(X, h));
+	Expr difference = rawSub(shifted, n);
+	Expr quotient = rawDiv(difference, h);
+
+	Expr expanded;
+	Expr simplified;
+	Expr value;
+	try {
+		expanded = expand(quotient);
+		simplified = cancel(expanded); // the quotient itself still contains h
+		g_inLimitDerivative = true;
+		value = limit(quotient, hname, mkInt(0), 0);
+		g_inLimitDerivative = false;
+	} catch (...) {
+		g_inLimitDerivative = false;
+		return false;
+	}
+	if (containsSym(value, hname))
+		return false;
+
+	trace::note(trace::Level::Methods,
+	            "use the limit definition with the increment " + hname);
+	trace::step(trace::Level::Methods, "expand difference quotient", quotient, expanded);
+	trace::step(trace::Level::Methods, "cancel the increment", expanded, simplified);
+	trace::step(trace::Level::Methods, "take the limit as " + hname + " -> 0",
+	            mkCall("limit", Exprs{simplified, h, mkInt(0)}), value);
+	result = value;
+	return true;
+}
+
+} // namespace
+
 Expr diff(const Expr& n, const std::string& x)
 {
+	Expr r;
+	if (diffByLimit(n, x, r)) {
+		trace::step(trace::Level::Methods, "differentiate", n, r);
+		return r;
+	}
 	trace::Scope scope("diff");
-	Expr r = diffImpl(n, x);
+	r = diffImpl(n, x);
 	trace::step(trace::Level::Methods, "differentiate", n, r);
 	return r;
 }
@@ -914,8 +1002,6 @@ Expr diffImpl(const Expr& n, const std::string& x)
 namespace {
 
 // degree k -> coefficient of x^k (sparse: x^1000000 is cheap)
-using Coeffs = std::map<long, Expr>;
-
 Coeffs collect(const Expr& n, const std::string& x)
 {
 	Expr e = expand(n);
@@ -987,8 +1073,11 @@ std::pair<Expr, Expr> polyDivide(const Expr& p, const Expr& q, const std::string
 			break;
 		Expr t = expand(mul(rc.at(dr), lcInv));
 		Expr term = mul(t, simpPow(X, mkInt(dr - dq)));
+		Expr qBefore = quotient, rBefore = r;
 		quotient = add(quotient, term);
 		r = expand(sub(r, expand(mul(term, qe))));
+		trace::step(trace::Level::Methods, "long-division step",
+		            mkList(Exprs{qBefore, rBefore}), mkList(Exprs{quotient, r}));
 		if (polyDegree(r, x) >= dr)
 			throw Error("polynomial division in " + x +
 			            " did not terminate (leading coefficient does not cancel)");

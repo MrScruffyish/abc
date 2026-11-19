@@ -230,6 +230,32 @@ def main():
                             "--work-file=" + worktex, "-e", "diff(x^2*exp(x), x)"])
         check("work trace groups exp powers for LaTeX",
               ("{e^{x}}^{1}" in out and "e^{x}^{" not in out), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "diff((x+1)^3,x)"])
+        check("work trace uses a difference quotient for polynomials",
+              all(s in out for s in (
+                  "use the limit definition",
+                  "\\text{diff: expand difference quotient}",
+                  "\\text{diff: take the limit as h -> 0}",
+                  "\\text{result} &: 3 x^{2}+6 x+3")), True)
+        # Named algorithms now expose the simpler steps they are built from.
+        traces = {
+            "quo(x^3-1,x-1,x)": ["\\text{quo: long-division step}"],
+            "sum(i^2,i=1 to n)": ["\\text{sum: power sum}",
+                                  "\\text{sum: shift bounds}"],
+            "cancel((x^2-1)/(x^3-1))": ["\\text{cancel: Euclid step}"],
+            "solve([x+y=3,x-y=1],[x,y])": ["\\text{solve: augmented matrix}",
+                                           "\\text{solve: back substitute}"],
+            "integrate(x*exp(x),x)": ["\\text{integrate: by-parts terms}"],
+            "integrate(x*exp(x^2),x)": ["\\text{integrate: rewrite the differential}",
+                                        "\\text{integrate: back substitute}"],
+            "expand((x+1)^3)": ["\\text{expand: sum the terms}"],
+        }
+        for expr, wanted in traces.items():
+            out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                                "--work-file=" + worktex, "-e", expr])
+            check(f"work trace steps for {expr}",
+                  all(s in out for s in wanted), True)
         out, _, _ = run(b, ["--show-your-work", "--work-file=" + worktex,
                             "-e", "1+1", "-e", "2+2"])
         check("work trace has one block per statement",

@@ -32,6 +32,8 @@ conflict; they are small and additive.
   `src/integrate.cpp`, `src/limit.cpp`, `src/numeric.cpp`, `src/solve.cpp`,
   `src/sum.cpp` — thin `*Impl` wrappers that label named algorithms.
 * `tests/cli_tests.py` — renamed expectations and new flag tests.
+* `tests/cases/05_functions.t` — the derivative of `(x+1)^3` is now the
+  expanded `3*x^2+6*x+3` (see below).
 
 New files: `src/trace.hpp`, `src/trace.cpp` and the runnable inputs in
 `examples/`. The C++ namespace is still `xyz` inside the code; only the
@@ -54,6 +56,44 @@ results are suppressed while tracing so that stdout is LaTeX only.
 
 To keep pathological inputs safe there are caps of 400 steps per statement
 and 8000 per run; the LaTeX notes when steps were omitted.
+
+## Showing algorithms as simpler steps
+
+At `methods` level the tracer now prints the smaller operations that the
+named algorithms are built from, using intermediate expression values the
+algorithms already compute (tracing does not change the calculation):
+
+* `polyDivide` — each `long-division step` shows the updated quotient and
+  remainder.
+* `sum` — `power sum` (Faulhaber), `shift bounds`, and the overall
+  `Faulhaber's formula`.
+* `gcd`/`cancel` — `remove content`, `Euclid step`, `divide out the gcd`
+  and `make the denominator positive`.
+* `solve` — `augmented matrix`, `eliminate column` and `back substitute`.
+* `integrate` — `divide numerator by denominator`, `solve coefficients`,
+  `by-parts terms`, `rewrite the differential`, `substitute`,
+  `integrate in` and `back substitute`.
+* `mulExpand` — when a multiplication produces several terms, a `sum the
+  terms` step shows them being combined before the next operation.
+
+When merging an `xyz` update, keep these `trace::step` calls at their
+existing loop points; a conflict is most likely in the same files listed
+above.
+
+## Polynomial derivatives by limits
+
+For a simple polynomial (degree 1..20, at most 30 coefficients) `diff` now
+computes the derivative from the difference quotient rather than by the
+power rule: it substitutes `f(x+h)`, expands `f(x+h)-f(x)`, divides by `h`,
+cancels the `h` factor and takes `limit(..., h, 0)`. This is a real
+computation change: results can come out expanded, e.g.
+`diff((x+1)^3, x)` is `3*x^2+6*x+3` instead of `3*(x+1)^2`. It also uses a
+fresh increment (`h`, or `~h`, `~h1`, …) when the expression already uses
+`h`, and a `thread_local` guard prevents `limit` → L'Hopital → `diff` from
+recursing back into the limit definition. Expressions that are not small
+polynomials still use the ordinary derivative rules. With
+`--show-your-work` the quotient, cancellation and limit are printed at
+`methods` level.
 
 ## Testing
 

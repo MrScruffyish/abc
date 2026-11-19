@@ -61,7 +61,10 @@ Expr powerSum(long p, const Expr& N)
 			term = mul(term, simpPow(N, mkInt(e)));
 		terms.push_back(term);
 	}
-	return simpAdd(terms);
+	Expr r = simpAdd(terms);
+	trace::step(trace::Level::Methods, "power sum",
+	            mkCall("sum", Exprs{mkPow(mkSym("k"), mkInt(p)), mkSym("k"), mkInt(1), N}), r);
+	return r;
 }
 
 } // namespace
@@ -70,7 +73,8 @@ Expr symbolicSum(const Expr& f, const std::string& var, const Expr& from, const 
 {
 	trace::Scope scope("sum");
 	Expr r = symbolicSumImpl(f, var, from, to);
-	trace::step(trace::Level::Methods, "Faulhaber's formula", f, r);
+	trace::step(trace::Level::Methods, "Faulhaber's formula",
+	            mkCall("sum", Exprs{f, mkSym(var), from, to}), r);
 	return r;
 }
 
@@ -92,6 +96,9 @@ Expr symbolicSumImpl(const Expr& f, const std::string& var, const Expr& from, co
 			parts.push_back(mul(coeff, count));
 		} else {
 			Expr diff = expand(sub(powerSum(p, to), powerSum(p, from1)));
+			trace::step(trace::Level::Methods, "shift bounds",
+			            mkCall("sum", Exprs{mkPow(mkSym(var), mkInt(p)), mkSym(var),
+			                                from, to}), diff);
 			parts.push_back(mul(coeff, diff));
 		}
 	}

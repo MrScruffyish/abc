@@ -193,14 +193,19 @@ Expr pgcd(const Expr& a, const Expr& b)
 	Expr ca = content(a, x), cb = content(b, x);
 	Expr c = pgcd(ca, cb);
 	Expr p = exactDiv(a, ca), q = exactDiv(b, cb);
+	trace::step(trace::Level::Methods, "remove content",
+	            mkList(Exprs{a, b}), mkList(Exprs{p, q}));
 	if (polyDegree(p, x) < polyDegree(q, x))
 		std::swap(p, q);
 	while (!isZero(q)) {
 		// constants are units over the rationals: scaling every remainder
 		// to small integer coefficients keeps the numbers from growing
 		Expr r = normalized(prem(p, q, x));
+		Expr pBefore = p, qBefore = q;
 		p = q;
 		q = primitivePart(r, x);
+		trace::step(trace::Level::Methods, "Euclid step",
+		            mkList(Exprs{pBefore, qBefore}), mkList(Exprs{p, q}));
 	}
 	return normalized(expand(mul(c, primitivePart(p, x))));
 }
@@ -217,8 +222,15 @@ Frac reduce(const Frac& f)
 		return {f.n, mkInt(1)};
 	Expr g = pgcd(f.n, f.d);
 	Expr n = exactDiv(f.n, g), d = exactDiv(f.d, g);
+	if (!isNumber(g, 1))
+		trace::step(trace::Level::Methods, "divide out the gcd",
+		            mkList(Exprs{f.n, f.d, g}), mkList(Exprs{n, d}));
 	Rational s = unitScale(d); // denominator: integer, positive leading term
-	return {scale(n, s), scale(d, s)};
+	Frac r{scale(n, s), scale(d, s)};
+	if (!s.isOne())
+		trace::step(trace::Level::Methods, "make the denominator positive",
+		            mkList(Exprs{n, d}), mkList(Exprs{r.n, r.d}));
+	return r;
 }
 
 // Non-polynomial parts are replaced by fresh symbols (~1, ~2, ...).

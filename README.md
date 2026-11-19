@@ -117,6 +117,12 @@ For example, `expand((x+2)^3)` at `methods` level now shows the
 multiplications it is made of: `(x+2)(x+2) = x^2+4x+4`, then
 `(x+2)(x^2+4x+4) = x^3+6x^2+12x+8`. These are the steps `expand` already
 takes; tracing only prints them, it does not change the calculation.
+Other algorithms expose their smaller steps in the same way: polynomial
+long division shows each quotient/remainder update, `sum` its power sums
+and bound shift, `cancel` its Euclid steps, `solve` its augmented matrix,
+row elimination and back substitution, and `integrate` its by-parts terms
+and substitutions. After a multiplication makes several terms, a step sums
+them before the next operation.
 
 The [`examples/`](examples/README.md) directory contains short input
 programs for algebra, equations, calculus, sums, assumptions and numbers,
@@ -524,7 +530,12 @@ they are (`sin(1)`, `ln(x)`), and `num` gives decimals.
   request, with `trigexpand` and `trigreduce`.
 * **Derivatives:** `diff` knows all of them, with the chain rule, and
   powers with the variable in the exponent: `diff(2^x, x)` → `2^x*ln(2)`,
-  `diff(x^x, x)` → `x^x*(ln(x)+1)`.
+  `diff(x^x, x)` → `x^x*(ln(x)+1)`. For a polynomial in the variable, the
+  derivative is computed from its difference quotient: the numerator is
+  expanded, the increment is cancelled and the limit as the increment goes
+  to 0 is taken. That is why `diff((x+1)^3, x)` comes out expanded as
+  `3*x^2+6*x+3`. Other expressions use the ordinary rules. With
+  `--show-your-work`, the quotient, cancellation and limit are shown.
 * **`trigexpand(e)`** applies the addition formulas and writes
   `sin(n*x)`, `cos(n*x)` (integer `n`) in `sin(x)` and `cos(x)`, and
   `tan(x+y)`, `tan(n*x)` in `tan(x)` and `tan(y)`:
@@ -1000,7 +1011,7 @@ treated as a free symbol even if it has a value. For example, after
 expand((x+y)^3)                 -> x^3+3*x^2*y+3*x*y^2+y^3
 coeff(3*x^2*y+x^2+5, x, 2)      -> 3*y+1
 quo(x^3-y^3, x-y, x)            -> x^2+x*y+y^2
-diff((x+1)^3, x)                -> 3*(x+1)^2
+diff((x+1)^3, x)                -> 3*x^2+6*x+3
 gcd(x^3-y^3, x^2-y^2)           -> x-y
 ```
 
