@@ -250,7 +250,7 @@ def main():
         run(b, ["--imag=i", "-e", "a = 2i;", "-e", f'save("{work}");'])
         with open(work) as f:
             check("saved files say which unit they need", f.read(),
-                  f"# the imaginary unit is i: run with  xyz --imag=i {work}\n"
+                  f"# the imaginary unit is i: run with  abc --imag=i {work}\n"
                   "a = 2i;\n")
         check("errors go to stderr, results to stdout",
               run(b, [], "1\nfoo(1)\n2\n"),
@@ -267,6 +267,17 @@ def main():
     check("no note when assumed", "note:" in out, False)
     o, e, _ = run(b, [], "sqrt(x^2)\n")
     check("no note in a pipe", "note:" in o + e, False)
+
+    # the worked examples all produce a LaTeX work document
+    exroot = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples")
+    with tempfile.TemporaryDirectory() as exdir:
+        for name in sorted(n for n in os.listdir(exroot) if n.endswith(".abc")):
+            tex = os.path.join(exdir, name[:-4] + ".tex")
+            out, err, code = run(b, ["--show-your-work", "--work-level=methods",
+                                    "--work-file=" + tex, os.path.join(exroot, name)])
+            with open(tex) as f:
+                has_document = "\\begin{document}" in f.read()
+            check(f"example {name}", (err, code, has_document), ("", 0, True))
 
     print(f"cli tests: {'ok' if not failures else f'{failures} FAILED'}")
     sys.exit(1 if failures else 0)

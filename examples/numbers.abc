@@ -1,0 +1,4 @@
+# Exact rationals, decimal approximations and complex arithmetic.
+1/3 + 1/6
+num(pi, 12)
+(3+2*im)*(1-im)

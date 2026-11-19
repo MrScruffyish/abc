@@ -14,7 +14,7 @@ save(work)
 save()
 1 + save("a")
 ---
-error: line 1: save: the file name must be a string, like save("work.xyz")
+error: line 1: save: the file name must be a string, like save("work.abc")
 error: line 2: save: expected 1 argument
 error: line 3: save() can only be used as a statement on its own
 

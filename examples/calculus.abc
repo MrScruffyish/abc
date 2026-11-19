@@ -1,0 +1,5 @@
+# Differentiation, integration by parts, L'Hopital and a series.
+diff(x^2*exp(x), x)
+integrate(x*exp(x), x)
+limit(sin(x)/x, x = 0)
+taylor(ln(x), x = 1, 3)

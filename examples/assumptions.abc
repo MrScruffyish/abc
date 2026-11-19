@@ -1,0 +1,4 @@
+# Assumptions change which simplifications are allowed.
+assume(x > 0)
+sqrt(x^2)
+solve(x^2 = 4, x)

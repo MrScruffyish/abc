@@ -33,9 +33,9 @@ conflict; they are small and additive.
   `src/sum.cpp` — thin `*Impl` wrappers that label named algorithms.
 * `tests/cli_tests.py` — renamed expectations and new flag tests.
 
-New files: `src/trace.hpp`, `src/trace.cpp`. The C++ namespace is still
-`xyz` inside the code; only the binary, docs and messages are called
-`abc`. That keeps the diff small.
+New files: `src/trace.hpp`, `src/trace.cpp` and the runnable inputs in
+`examples/`. The C++ namespace is still `xyz` inside the code; only the
+binary, docs and messages are called `abc`. That keeps the diff small.
 
 ## How the trace works
 

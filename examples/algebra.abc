@@ -1,0 +1,4 @@
+# Expansion, factoring and cancellation.
+expand((x+2)^3)
+factor(x^4-1)
+cancel((x^2-1)/(x-1))

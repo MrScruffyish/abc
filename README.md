@@ -113,6 +113,10 @@ recorded; each level includes the ones before it:
 | `methods` | also named algorithms: expand, factor, quadratic formula, integration by parts, L'Hopital's rule, ... |
 | `all`     | also every expression rewrite and automatic simplification (the default with `--show-your-work`) |
 
+The [`examples/`](examples/README.md) directory contains short input
+programs for algebra, equations, calculus, sums, assumptions and numbers,
+each ready to run with the work trace.
+
 The trace is capped at 400 steps per statement and 8000 steps in total,
 so a runaway calculation cannot produce an enormous document; a note in
 the LaTeX says when steps were omitted. Errors are also reported on

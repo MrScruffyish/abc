@@ -1385,7 +1385,7 @@ bool Interpreter::execStatementCall(const Stmt& s)
 	} else if (e->name == "save" || e->name == "transcript") {
 		if (e->args[0]->kind != Kind::Str)
 			throw Error(e->name + ": the file name must be a string, like " +
-			            e->name + "(\"work.xyz\")");
+			            e->name + "(\"work.abc\")");
 		saveSession(e->args[0]->name, e->name == "transcript", s.show);
 	} else if (e->name == "disp") {
 		Exprs row;
@@ -1453,7 +1453,7 @@ void Interpreter::saveSession(const std::string& file, bool withOutput, bool sho
 		writeLatex(f, withOutput);
 	} else {
 	if (imagName() != "im")
-		f << "# the imaginary unit is " << imagName() << ": run with  xyz --imag="
+		f << "# the imaginary unit is " << imagName() << ": run with  abc --imag="
 		  << imagName() << " " << file << "\n";
 	for (const LogEntry& e : log_) {
 		f << e.source << (e.show ? "\n" : ";\n");
@@ -1548,12 +1548,12 @@ std::string Interpreter::defLatex(const std::string& name, const Def& d) const
 // formulas (tables as arrays, errors in italics).
 void Interpreter::writeLatex(std::ostream& f, bool withOutput) const
 {
-	f << "% written by xyz transcript()\n"
+	f << "% written by abc transcript()\n"
 	     "\\documentclass{article}\n"
 	     "\\usepackage{amsmath}\n"
 	     "\\begin{document}\n";
 	if (imagName() != "im")
-		f << "% the imaginary unit was called " << imagName() << " (xyz --imag="
+		f << "% the imaginary unit was called " << imagName() << " (abc --imag="
 		  << imagName() << ")\n";
 	for (const LogEntry& e : log_) {
 		f << "\n\\begin{verbatim}\n" << e.source << (e.show ? "" : ";")
