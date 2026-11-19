@@ -113,6 +113,11 @@ recorded; each level includes the ones before it:
 | `methods` | also named algorithms: expand, factor, quadratic formula, integration by parts, L'Hopital's rule, ... |
 | `all`     | also every expression rewrite and automatic simplification (the default with `--show-your-work`) |
 
+For example, `expand((x+2)^3)` at `methods` level now shows the
+multiplications it is made of: `(x+2)(x+2) = x^2+4x+4`, then
+`(x+2)(x^2+4x+4) = x^3+6x^2+12x+8`. These are the steps `expand` already
+takes; tracing only prints them, it does not change the calculation.
+
 The [`examples/`](examples/README.md) directory contains short input
 programs for algebra, equations, calculus, sums, assumptions and numbers,
 each ready to run with the work trace. From the project root, run

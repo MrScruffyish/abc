@@ -218,6 +218,14 @@ def main():
                             "--work-file=" + worktex, "-e", "expand((x+1)^2)"])
         check("work-level=methods keeps named methods",
               ("\\text{expand: expand}" in out and "combine terms" not in out), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "expand((x+2)^3)"])
+        check("work trace shows the multiplications in a power expansion",
+              all(s in out for s in (
+                  "\\text{expand: square} &: \\left(x+2\\right) \\left(x+2\\right) "
+                  "= x^{2}+4 x+4",
+                  "\\text{expand: multiply} &: \\left(x+2\\right) "
+                  "\\left(x^{2}+4 x+4\\right) = x^{3}+6 x^{2}+12 x+8")), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=all",
                             "--work-file=" + worktex, "-e", "diff(x^2*exp(x), x)"])
         check("work trace groups exp powers for LaTeX",

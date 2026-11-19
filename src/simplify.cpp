@@ -781,6 +781,16 @@ Expr mulExpand(const Expr& a, const Expr& b)
 	return simpAdd(out);
 }
 
+// Show a multiplication made while expanding a power. Multiplying the
+// accumulator by 1 only starts the square-and-multiply loop, so it is not
+// a step worth showing.
+void traceExpandProduct(const char* label, const Expr& a, const Expr& b, const Expr& r)
+{
+	if (a->kind == Kind::Num && a->num.isOne())
+		return;
+	trace::step(trace::Level::Methods, label, mkNode(Kind::Mul, Exprs{a, b}), r);
+}
+
 } // namespace
 
 Expr expand(const Expr& n)
@@ -814,11 +824,17 @@ Expr expandImpl(const Expr& n)
 		if (b->kind == Kind::Add && isInt(e, k) && k > 1) {
 			Expr result = mkInt(1), sq = b; // square and multiply
 			while (k > 0) {
-				if (k & 1)
-					result = mulExpand(result, sq);
+				if (k & 1) {
+					Expr next = mulExpand(result, sq);
+					traceExpandProduct("multiply", result, sq, next);
+					result = next;
+				}
 				k >>= 1;
-				if (k)
-					sq = mulExpand(sq, sq);
+				if (k) {
+					Expr next = mulExpand(sq, sq);
+					traceExpandProduct("square", sq, sq, next);
+					sq = next;
+				}
 			}
 			return result;
 		}
