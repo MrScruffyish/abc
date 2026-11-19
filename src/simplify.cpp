@@ -769,7 +769,13 @@ const Exprs& termsOf(const Expr& e, Exprs& single)
 	return single;
 }
 
-Expr mulExpand(const Expr& a, const Expr& b)
+// Multiply a and b out into the raw term-by-term products, then combine
+// like terms. With a label, emit the two phases separately, in order:
+//     a*b = raw products       (distribution)
+//     raw products = sum       (combining)
+// Multiplying the accumulator by 1 only starts the square-and-multiply
+// loop, so that step is skipped.
+Expr mulExpand(const Expr& a, const Expr& b, const char* label = nullptr)
 {
 	Exprs sa, sb, out;
 	const Exprs& ta = termsOf(a, sa);
@@ -779,21 +785,14 @@ Expr mulExpand(const Expr& a, const Expr& b)
 			Expr p = mul(x, y);
 			out.push_back(needsExpand(p) ? expand(p) : p);
 		}
+	Expr raw = mkNode(Kind::Add, out);
+	if (label && !(a->kind == Kind::Num && a->num.isOne()))
+		trace::step(trace::Level::Methods, label,
+		            mkNode(Kind::Mul, Exprs{a, b}), raw);
 	Expr sum = simpAdd(out);
 	if (out.size() >= 3)
-		trace::step(trace::Level::Methods, "sum the terms",
-		            mkNode(Kind::Add, out), sum);
+		trace::step(trace::Level::Methods, "sum the terms", raw, sum);
 	return sum;
-}
-
-// Show a multiplication made while expanding a power. Multiplying the
-// accumulator by 1 only starts the square-and-multiply loop, so it is not
-// a step worth showing.
-void traceExpandProduct(const char* label, const Expr& a, const Expr& b, const Expr& r)
-{
-	if (a->kind == Kind::Num && a->num.isOne())
-		return;
-	trace::step(trace::Level::Methods, label, mkNode(Kind::Mul, Exprs{a, b}), r);
 }
 
 } // namespace
@@ -830,15 +829,13 @@ Expr expandImpl(const Expr& n)
 			Expr result = mkInt(1), sq = b; // square and multiply
 			while (k > 0) {
 				if (k & 1) {
-					Expr next = mulExpand(result, sq);
-					traceExpandProduct("multiply", result, sq, next);
-					result = next;
+					result = mulExpand(result, sq, "multiply");
 				}
 				k >>= 1;
 				if (k) {
-					Expr next = mulExpand(sq, sq);
-					traceExpandProduct("square", sq, sq, next);
-					sq = next;
+					trace::step(trace::Level::Methods, "power as product",
+					            simpPow(sq, mkInt(2)), mkNode(Kind::Mul, Exprs{sq, sq}));
+					sq = mulExpand(sq, sq, "square");
 				}
 			}
 			return result;

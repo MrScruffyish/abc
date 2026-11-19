@@ -223,9 +223,10 @@ def main():
         check("work trace shows the multiplications in a power expansion",
               all(s in out for s in (
                   "\\text{expand: square} &: \\left(x+2\\right) \\left(x+2\\right) "
-                  "= x^{2}+4 x+4",
+                  "= x^{2}+2 x+2 x+4",
                   "\\text{expand: multiply} &: \\left(x+2\\right) "
-                  "\\left(x^{2}+4 x+4\\right) = x^{3}+6 x^{2}+12 x+8")), True)
+                  "\\left(x^{2}+4 x+4\\right) "
+                  "= x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8")), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=all",
                             "--work-file=" + worktex, "-e", "diff(x^2*exp(x), x)"])
         check("work trace groups exp powers for LaTeX",
@@ -256,6 +257,16 @@ def main():
                                 "--work-file=" + worktex, "-e", expr])
             check(f"work trace steps for {expr}",
                   all(s in out for s in wanted), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "expand((x+2)^3)"])
+        check("expansion shows raw products before combining",
+              all(s in out for s in (
+                  r"\text{expand: power as product} &: \left(x+2\right)^{2} = \left(x+2\right) \left(x+2\right)",
+                  r"\text{expand: square} &: \left(x+2\right) \left(x+2\right) = x^{2}+2 x+2 x+4",
+                  r"\text{expand: sum the terms} &: x^{2}+2 x+2 x+4 = x^{2}+4 x+4",
+                  r"\text{expand: multiply} &: \left(x+2\right) \left(x^{2}+4 x+4\right) = x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8",
+                  r"\text{expand: sum the terms} &: x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8 = x^{3}+6 x^{2}+12 x+8",
+              )), True)
         out, _, _ = run(b, ["--show-your-work", "--work-file=" + worktex,
                             "-e", "1+1", "-e", "2+2"])
         check("work trace has one block per statement",

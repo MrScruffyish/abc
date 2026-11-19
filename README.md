@@ -113,16 +113,21 @@ recorded; each level includes the ones before it:
 | `methods` | also named algorithms: expand, factor, quadratic formula, integration by parts, L'Hopital's rule, ... |
 | `all`     | also every expression rewrite and automatic simplification (the default with `--show-your-work`) |
 
-For example, `expand((x+2)^3)` at `methods` level now shows the
-multiplications it is made of: `(x+2)(x+2) = x^2+4x+4`, then
-`(x+2)(x^2+4x+4) = x^3+6x^2+12x+8`. These are the steps `expand` already
-takes; tracing only prints them, it does not change the calculation.
-Other algorithms expose their smaller steps in the same way: polynomial
-long division shows each quotient/remainder update, `sum` its power sums
-and bound shift, `cancel` its Euclid steps, `solve` its augmented matrix,
-row elimination and back substitution, and `integrate` its by-parts terms
-and substitutions. After a multiplication makes several terms, a step sums
-them before the next operation.
+For example, `expand((x+2)^3)` at `methods` level shows each multiplication
+in two phases: first the raw term-by-term products, then the combining of
+like terms:
+
+    (x+2)^2 = (x+2)(x+2) = x^2+2x+2x+4
+                        = x^2+4x+4
+    (x+2)(x^2+4x+4) = x^3+4x^2+4x+2x^2+8x+8
+                    = x^3+6x^2+12x+8
+
+These are the steps `expand` already takes; tracing only prints them, it
+does not change the calculation. Other algorithms expose their smaller
+steps in the same way: polynomial long division shows each
+quotient/remainder update, `sum` its power sums and bound shift, `cancel`
+its Euclid steps, `solve` its augmented matrix, row elimination and back
+substitution, and `integrate` its by-parts terms and substitutions.
 
 The [`examples/`](examples/README.md) directory contains short input
 programs for algebra, equations, calculus, sums, assumptions and numbers,

@@ -73,8 +73,10 @@ algorithms already compute (tracing does not change the calculation):
 * `integrate` — `divide numerator by denominator`, `solve coefficients`,
   `by-parts terms`, `rewrite the differential`, `substitute`,
   `integrate in` and `back substitute`.
-* `mulExpand` — when a multiplication produces several terms, a `sum the
-  terms` step shows them being combined before the next operation.
+* `mulExpand` — each multiplication is shown in two phases: first the raw
+  term-by-term products (`square`/`multiply`, plus `power as product` when a
+  power is rewritten as a product), then `sum the terms` combines like
+  terms. This is trace-only; the `expand` computation is unchanged.
 
 When merging an `xyz` update, keep these `trace::step` calls at their
 existing loop points; a conflict is most likely in the same files listed
