@@ -11,6 +11,12 @@ trace to get both LaTeX on stdout and a complete `.tex` document:
 Use `--work-level=top`, `methods` or `all` (the default) to choose how much
 detail to record.
 
+From the project root, `make examples` builds all of them at once. It
+writes `build/examples/<name>.tex` (the self-contained article),
+`build/examples/<name>.stdout.tex` (the LaTeX printed on stdout) and, if
+`pdflatex` is installed, `build/examples/<name>.pdf`. Use
+`make examples WORK_LEVEL=all` for the most detailed trace.
+
 | File | What it shows |
 |------|---------------|
 | `algebra.abc` | expanding powers, factoring polynomials, cancelling a common factor |

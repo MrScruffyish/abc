@@ -34,6 +34,16 @@ bool negNumExp(const Expr& n)
 	       n->args[1]->num.sign() < 0;
 }
 
+// exp(x) is printed as e^{x}. When such an expression is the base of a
+// power, its superscript must be grouped: {e^{x}}^2, not e^{x}^2, which is
+// a LaTeX "double superscript" error. Held results show e^{x} too.
+bool latexNeedsGrouping(const Expr& n)
+{
+	if (n->kind == Kind::Held && !n->args.empty())
+		return latexNeedsGrouping(n->args[0]);
+	return n->kind == Kind::Call && n->name == "exp" && n->args.size() == 1;
+}
+
 int prec(const Expr& n)
 {
 	switch (n->kind) {
@@ -482,7 +492,12 @@ void lx(std::string& out, const Expr& n, int minPrec)
 			out += '}';
 			break;
 		}
+		bool group = latexNeedsGrouping(n->args[0]);
+		if (group)
+			out += '{';
 		lx(out, n->args[0], P_ATOM);
+		if (group)
+			out += '}';
 		out += "^{";
 		lx(out, e, P_ARG);
 		out += '}';

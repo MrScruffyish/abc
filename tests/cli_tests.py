@@ -218,6 +218,10 @@ def main():
                             "--work-file=" + worktex, "-e", "expand((x+1)^2)"])
         check("work-level=methods keeps named methods",
               ("\\text{expand: expand}" in out and "combine terms" not in out), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=all",
+                            "--work-file=" + worktex, "-e", "diff(x^2*exp(x), x)"])
+        check("work trace groups exp powers for LaTeX",
+              ("{e^{x}}^{1}" in out and "e^{x}^{" not in out), True)
         out, _, _ = run(b, ["--show-your-work", "--work-file=" + worktex,
                             "-e", "1+1", "-e", "2+2"])
         check("work trace has one block per statement",
@@ -233,6 +237,13 @@ def main():
                                 "-halt-on-error", "show.tex"], cwd=d,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             check("work trace compiles with pdflatex", p.returncode, 0)
+            exptex = os.path.join(d, "exp.tex")
+            run(b, ["--show-your-work", "--work-level=all", "--work-file=" + exptex,
+                    "-e", "diff(x^2*exp(x), x)"])
+            p = subprocess.run(["pdflatex", "-interaction=nonstopmode",
+                                "-halt-on-error", "exp.tex"], cwd=d,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            check("exp work trace compiles with pdflatex", p.returncode, 0)
         else:
             print("skipping work-trace pdflatex check (not installed)")
 

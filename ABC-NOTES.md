@@ -58,7 +58,14 @@ and 8000 per run; the LaTeX notes when steps were omitted.
 ## Testing
 
 `make test` runs the golden, CLI and randomised suites. The randomised
-suite has a pre-existing numerical flake in `test_taylor`; for example
-seed `574894500` fails identically with the unmodified `../xyz/xyz`.
-The deterministic suites pass, and the generated LaTeX compiles with
+suite has pre-existing flakes in `test_taylor` and `test_factor_gauss`;
+for example seed `574894500` (`test_taylor`) and seed `617788697` (both)
+fail identically with the unmodified `../xyz/xyz`. The deterministic
+suites pass, and the generated LaTeX compiles with
 `pdflatex` when it is installed (checked by `cli_tests.py`).
+
+`make examples` (optionally with `WORK_LEVEL=all` or `top`) runs every
+file in `examples/` through the tracer and writes the resulting `.tex`,
+`.stdout.tex` and (when `pdflatex` is available) `.pdf` files into
+`build/examples/`. It is a convenient smoke test that the whole pipeline
+still works after merging an `xyz` update.

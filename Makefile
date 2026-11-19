@@ -33,7 +33,11 @@ HDRS := $(wildcard src/*.hpp)
 OBJS := $(SRCS:src/%.cpp=$(BUILD)/obj/%.o)
 ASAN_OBJS := $(SRCS:src/%.cpp=$(BUILD)/asan/%.o)
 
-.PHONY: all test test-asan clean distclean
+EXAMPLES   := $(wildcard examples/*.abc)
+EXAMPLE_DIR := $(BUILD)/examples
+WORK_LEVEL ?= methods
+
+.PHONY: all examples test test-asan clean distclean
 
 all: abc
 
@@ -62,6 +66,27 @@ $(BUILD)/obj/main.o $(BUILD)/asan/main.o: $(RL_STAMP)
 abc: $(OBJS) $(BCL_LIB)
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) $(BCL_LIB) $(RL_LIBS)
 
+# Generate one LaTeX work document (and its stdout trace) per example.
+# With pdflatex installed, also compile each document to a PDF.
+examples: abc
+	@mkdir -p $(EXAMPLE_DIR)
+	@set -e; for f in $(EXAMPLES); do \
+	  n=$$(basename "$$f" .abc); \
+	  ./abc --show-your-work --work-level=$(WORK_LEVEL) \
+	    --work-file=$(EXAMPLE_DIR)/$$n.tex "$$f" > $(EXAMPLE_DIR)/$$n.stdout.tex; \
+	  echo "wrote $(EXAMPLE_DIR)/$$n.tex"; \
+	done
+	@if command -v pdflatex >/dev/null 2>&1; then \
+	  set -e; for f in $(EXAMPLES); do \
+	    n=$$(basename "$$f" .abc); \
+	    pdflatex -interaction=nonstopmode -halt-on-error \
+	      -output-directory=$(EXAMPLE_DIR) $(EXAMPLE_DIR)/$$n.tex >/dev/null; \
+	  done; \
+	  echo "compiled PDFs in $(EXAMPLE_DIR)"; \
+	else \
+	  echo "pdflatex not found; skipped PDF compilation"; \
+	fi
+
 $(BUILD)/abc-asan: $(ASAN_OBJS) $(BCL_LIB)
 	$(CXX) $(SAN) -o $@ $(ASAN_OBJS) $(BCL_LIB) $(RL_LIBS)
 
@@ -76,7 +101,7 @@ test-asan: $(BUILD)/abc-asan
 	python3 tests/random_tests.py $(BUILD)/abc-asan --count 60
 
 clean:
-	rm -rf abc $(BUILD)/obj $(BUILD)/asan $(BUILD)/abc-asan
+	rm -rf abc $(BUILD)/obj $(BUILD)/asan $(BUILD)/abc-asan $(EXAMPLE_DIR)
 
 distclean: clean
 	rm -rf $(BUILD)

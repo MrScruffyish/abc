@@ -115,7 +115,12 @@ recorded; each level includes the ones before it:
 
 The [`examples/`](examples/README.md) directory contains short input
 programs for algebra, equations, calculus, sums, assumptions and numbers,
-each ready to run with the work trace.
+each ready to run with the work trace. From the project root, run
+`make examples` to build them all: it writes
+`build/examples/<name>.tex`, `build/examples/<name>.stdout.tex` and, when
+`pdflatex` is installed, `build/examples/<name>.pdf`. Use
+`make examples WORK_LEVEL=all` for the most detailed trace (the target
+defaults to `methods`).
 
 The trace is capped at 400 steps per statement and 8000 steps in total,
 so a runaway calculation cannot produce an enormous document; a note in
