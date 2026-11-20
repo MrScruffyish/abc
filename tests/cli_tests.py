@@ -282,6 +282,8 @@ def main():
                             "--work-file=" + worktex, "-e", "factor(x^4-1)"])
         check("work trace shows how rational roots give the factors",
               all(s in out for s in (
+                  r"\text{factor: possible rational roots} &: x^{4}-1 = \left[-1, 1\right] \\",
+                  r"\text{factor: try the candidates} &: \left[p\left(-1\right), p\left(1\right)\right] = \left[0, 0\right] \\",
                   r"\text{factor: rational root} &: x^{4}-1 = -1 \\",
                   r"\text{factor: divide by the root} &: \frac{\left(x^{4}-1\right)}{\left(x+1\right)} = x^{3}-x^{2}+x-1 \\",
                   r"\text{factor: rational root} &: x^{3}-x^{2}+x-1 = 1 \\",
@@ -291,8 +293,16 @@ def main():
                             "--work-file=" + worktex, "-e", "factor(x^4+x^2+1)"])
         check("work trace shows the Kronecker factor",
               all(s in out for s in (
+                  r"\text{factor: possible rational roots} &: x^{4}+x^{2}+1 = \left[-1, 1\right] \\",
                   r"\text{factor: Kronecker factor} &: x^{4}+x^{2}+1 = x^{2}+x+1 \\",
                   r"\text{factor: divide by the factor} &: \frac{\left(x^{4}+x^{2}+1\right)}{\left(x^{2}+x+1\right)} = x^{2}-x+1 \\",
+              )), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "factor(2*x^3-3*x^2-2*x)"])
+        check("work trace tries fractional root candidates",
+              all(s in out for s in (
+                  r"\text{factor: possible rational roots} &: 2 x^{2}-3 x-2 = \left[-2, -1, -\frac{1}{2}, \frac{1}{2}, 1, 2\right] \\",
+                  r"\text{factor: try the candidates} &: \left[p\left(-2\right), p\left(-1\right), p\left(-\frac{1}{2}\right), p\left(\frac{1}{2}\right), p\left(1\right), p\left(2\right)\right] = \left[12, 3, 0, -3, -3, 0\right] \\",
               )), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "expand((x+2)^3)"])

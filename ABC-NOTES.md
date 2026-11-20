@@ -68,10 +68,13 @@ algorithms already compute (tracing does not change the calculation):
 * `simpPow` — `sqrt` of a perfect-square polynomial shows `leading term`,
   `next coefficient` and `verify the square`; steps are buffered and only
   emitted once the whole polynomial is known to be a square.
-* `factor` — `rational root` and `divide by the root` show how a root found
-  by testing divisors of the leading and constant coefficients is removed;
-  `Kronecker factor` and `divide by the factor` do the same for the
-  higher-degree factors found by interpolation.
+* `factor` — `possible rational roots` lists the candidates (divisors of
+  the constant term over divisors of the leading coefficient, capped at 24
+  shown); `try the candidates` shows `p(r)` for each one and its value, so
+  the zeros are the roots. `rational root` and `divide by the root` then
+  show each root that works and the division that removes it. `Kronecker
+  factor` and `divide by the factor` do the same for the higher-degree
+  factors found by interpolation.
 * `sum` — `power sum` (Faulhaber), `shift bounds`, and the overall
   `Faulhaber's formula`.
 * `gcd`/`cancel` — `remove content`, `Euclid step`, `divide out the gcd`

@@ -623,36 +623,62 @@ bool isIntPoly(const QPoly& p)
 	return true;
 }
 
-// the rational roots of the primitive integer polynomial p, ascending
-std::vector<Rational> ratRoots(QPoly p)
+// the rational roots of the primitive integer polynomial p, ascending.
+// `shown` is the polynomial to display when tracing which candidates are
+// tried (`p` in the trace). Candidates are divisors of the constant term
+// over divisors of the leading coefficient, with both signs.
+std::vector<Rational> ratRoots(QPoly p, const Expr& shown = Expr())
 {
-	std::vector<Rational> roots;
+	constexpr size_t kMaxShown = 24;
+	auto byValue = [](const Rational& a, const Rational& b) { return a.compare(b) < 0; };
+	const QPoly original = p; // evaluate on the untrimmed polynomial
+	std::vector<Rational> candidates;
+	bool show = shown && trace::level() >= trace::Level::Methods;
+
 	if (p.size() >= 2 && p[0].isZero()) {
-		roots.push_back(Rational(0));
+		candidates.push_back(Rational(0));
 		while (p.size() >= 2 && p[0].isZero())
 			p.erase(p.begin());
 	}
-	if (degree(p) < 1)
-		return roots;
-	std::vector<BigInt> ps, qs;
-	try {
-		if (!divisors(p[0].numerator().abs(), ps, 5000) ||
-		    !divisors(p.back().numerator().abs(), qs, 5000))
-			return roots; // too many candidates: only the ones found so far
-	} catch (const Error&) {
-		return roots; // the coefficients are too large to factor
-	}
-	for (const BigInt& a : ps)
-		for (const BigInt& b : qs) {
-			if (!BigInt::gcd(a, b).isOne())
-				continue;
-			for (int s : {1, -1}) {
-				Rational r(s > 0 ? a : -a, b);
-				if (evalAt(p, r).isZero())
-					roots.push_back(r);
+	if (degree(p) >= 1) {
+		std::vector<BigInt> ps, qs;
+		try {
+			if (divisors(p[0].numerator().abs(), ps, 5000) &&
+			    divisors(p.back().numerator().abs(), qs, 5000)) {
+				for (const BigInt& a : ps)
+					for (const BigInt& b : qs) {
+						if (!BigInt::gcd(a, b).isOne())
+							continue;
+						for (int s : {1, -1})
+							candidates.push_back(Rational(s > 0 ? a : -a, b));
+					}
 			}
+		} catch (const Error&) {
+			// coefficients too large to factor: keep the candidates found so far
 		}
-	std::sort(roots.begin(), roots.end(), [](const Rational& a, const Rational& b) { return a.compare(b) < 0; });
+	}
+	std::sort(candidates.begin(), candidates.end(), byValue);
+
+	std::vector<Rational> roots;
+	Exprs items, trials, values;
+	for (const Rational& r : candidates) {
+		Rational v = evalAt(original, r);
+		if (v.isZero())
+			roots.push_back(r);
+		if (show && values.size() < kMaxShown) {
+			items.push_back(mkNum(r));
+			trials.push_back(mkCall("p", {mkNum(r)}));
+			values.push_back(mkNum(v));
+		}
+	}
+	if (show) {
+		trace::step(trace::Level::Methods, "possible rational roots", shown, mkList(items));
+		trace::step(trace::Level::Methods, "try the candidates", mkList(trials), mkList(values));
+		if (candidates.size() > kMaxShown)
+			trace::note(trace::Level::Methods,
+			            "showing the first " + std::to_string(kMaxShown) + " of " +
+			            std::to_string(candidates.size()) + " candidates");
+	}
 	return roots;
 }
 
@@ -766,7 +792,8 @@ std::vector<std::pair<QPoly, long>> factorUni(const QPoly& f, const Expr& x = Ex
 		if (show && m > 1)
 			trace::step(trace::Level::Methods, "repeated factor",
 			            fromQPoly(s, x), mkPow(fromQPoly(s, x), mkInt(m)));
-		for (const Rational& r : ratRoots(s)) { // q*x - p
+		Expr shown = show ? fromQPoly(s, x) : Expr();
+		for (const Rational& r : ratRoots(s, shown)) { // q*x - p
 			QPoly rootFactor{-r, Rational(1)};
 			QPoly rest = quo(s, rootFactor);
 			if (show) {

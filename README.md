@@ -150,9 +150,11 @@ subtraction, expanded and collected), dividing out the GCD, and cancelling:
 
 Since `x-1` and `x-1` are equal, that quotient is immediately 1; only
 `x^2-1` needs the full long division. `factor` shows how each factor is
-found: a rational root (a divisor of the constant term over a divisor of
-the leading coefficient), the division that removes it, and Kronecker
-interpolation for factors of degree two or more. `sqrt` of a perfect-square
+found: first the list of possible rational roots (divisors of the constant
+term over divisors of the leading coefficient), then each candidate being
+tried as `p(r)`, each root that works with the division that removes it,
+and Kronecker interpolation for factors of degree two or more. `sqrt` of a
+perfect-square
 polynomial shows how the root is found: the square root of the leading
 coefficient, each next coefficient as an exact division, and a final check
 that the polynomial is the square of the root.
