@@ -75,9 +75,11 @@ algorithms already compute (tracing does not change the calculation):
   calculation as one block: `Finding GCD:` (every subtraction, with the
   product expanded and terms collected, then `GCD = ...`), `Divide out the
   GCD:` and `Canceling:` (the fraction with numerator and denominator
-  factored by the GCD). Internal steps are hidden with `trace::Silence`
-  while that block is collected, so the confusing bare `expand` steps no
-  longer appear.
+  factored by the GCD). A quotient of equal polynomials is written directly;
+  otherwise the division is laid out as a schoolbook long division (divisor,
+  quotient, each subtraction and remainder) using `DivStep`s collected from
+  `exactDiv`. Internal steps are hidden with `trace::Silence` while that
+  block is collected, so the confusing bare `expand` steps no longer appear.
 * `solve` — `augmented matrix`, `eliminate column` and `back substitute`.
 * `integrate` — `divide numerator by denominator`, `solve coefficients`,
   `by-parts terms`, `rewrite the differential`, `substitute`,

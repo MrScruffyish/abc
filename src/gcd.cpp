@@ -111,8 +111,15 @@ Expr normalized(const Expr& p)
 	return scale(p, unitScale(p));
 }
 
-// a / b for polynomials where b divides a exactly
-Expr exactDiv(const Expr& a, const Expr& b)
+// One line of a long division: the polynomial subtracted at this step and
+// the remainder left afterwards.
+struct DivStep {
+	Expr subtracted, remainder;
+};
+
+// a / b for polynomials where b divides a exactly. When `steps` is given,
+// record each subtraction for the long-division work trace.
+Expr exactDiv(const Expr& a, const Expr& b, std::vector<DivStep>* steps = nullptr)
 {
 	if (isZero(a))
 		return a;
@@ -130,7 +137,10 @@ Expr exactDiv(const Expr& a, const Expr& b)
 			throw Error("internal error: polynomial division is not exact");
 		Expr term = mul(exactDiv(rc.at(dr), lcb), powX(x, dr - db));
 		q = add(q, term);
-		r = expand(sub(r, expand(mul(term, b))));
+		Expr subtracted = expand(mul(term, b));
+		r = expand(sub(r, subtracted));
+		if (steps)
+			steps->push_back({subtracted, r});
 	}
 	return expand(q);
 }
@@ -315,6 +325,22 @@ std::string gcdDetailLaTeX(const Expr& a, const Expr& b)
 	return rows;
 }
 
+// A schoolbook long division: divisor left of the bar, quotient above it,
+// then each subtraction and the remainder it leaves.
+std::string longDivisionLaTeX(const Expr& a, const Expr& b, const Expr& q,
+                              const std::vector<DivStep>& steps)
+{
+	std::string rows = "\\begin{array}{r|l}\n";
+	rows += " & " + toLatex(q) + " \\\\ \\cline{2-2}\n";
+	rows += toLatex(b) + " & " + toLatex(a) + " \\\\\n";
+	for (const DivStep& st : steps) {
+		rows += " & -\\left(" + toLatex(st.subtracted) + "\\right) \\\\ \\cline{2-2}\n";
+		rows += " & " + toLatex(st.remainder) + " \\\\\n";
+	}
+	rows += "\\end{array} \\\\\n";
+	return rows;
+}
+
 struct Frac {
 	Expr n, d; // expanded polynomials, d != 0
 };
@@ -324,7 +350,10 @@ Frac reduce(const Frac& f)
 	if (isZero(f.n))
 		return {f.n, mkInt(1)};
 	Expr g = pgcd(f.n, f.d);
-	Expr n = exactDiv(f.n, g), d = exactDiv(f.d, g);
+	bool wantDetail = g_detail && g->kind != Kind::Num;
+	std::vector<DivStep> nSteps, dSteps;
+	Expr n = exactDiv(f.n, g, wantDetail ? &nSteps : nullptr);
+	Expr d = exactDiv(f.d, g, wantDetail ? &dSteps : nullptr);
 	if (!isNumber(g, 1))
 		trace::step(trace::Level::Methods, "divide out the gcd",
 		            mkList(Exprs{f.n, f.d, g}), mkList(Exprs{n, d}));
@@ -335,8 +364,16 @@ Frac reduce(const Frac& f)
 		if (!rows.empty()) {
 			g_detail->rows += rows;
 			g_detail->rows += "\\text{Divide out the GCD:} & \\\\\n";
-			g_detail->rows += toLatex(rawDiv(f.n, g)) + " &= " + toLatex(n) + " \\\\\n";
-			g_detail->rows += toLatex(rawDiv(f.d, g)) + " &= " + toLatex(d) + " \\\\\n";
+			// Equal polynomials divide in one step; only a longer division
+			// needs the full schoolbook layout.
+			if (equal(f.n, g))
+				g_detail->rows += toLatex(rawDiv(f.n, g)) + " &= " + toLatex(n) + " \\\\\n";
+			else
+				g_detail->rows += longDivisionLaTeX(f.n, g, n, nSteps);
+			if (equal(f.d, g))
+				g_detail->rows += toLatex(rawDiv(f.d, g)) + " &= " + toLatex(d) + " \\\\\n";
+			else
+				g_detail->rows += longDivisionLaTeX(f.d, g, d, dSteps);
 			bool unit = d->kind == Kind::Num && d->num.isOne();
 			Expr den = unit ? g : rawMul(d, g);
 			Expr last = unit ? n : rawDiv(n, d);

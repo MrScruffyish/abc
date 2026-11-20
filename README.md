@@ -136,10 +136,21 @@ subtraction, expanded and collected), dividing out the GCD, and cancelling:
     x-1-(x-1) = x-1-x+1 = 0
     GCD = x-1
     Divide out the GCD:
-    (x^2-1)/(x-1) = x+1,   (x-1)/(x-1) = 1
+          x+1
+    x-1 | x^2-1
+        -(x^2-x)
+        --------
+          x-1
+        -(x-1)
+        --------
+          0
+    (x-1)/(x-1) = 1
     Canceling:
     (x^2-1)/(x-1) = (x+1)(x-1)/(x-1) = x+1
-`sqrt` of a perfect-square polynomial shows how the root is found: the
+
+Since `x-1` and `x-1` are equal, that quotient is immediately 1; only
+`x^2-1` needs the full long division. `sqrt` of a perfect-square polynomial
+shows how the root is found: the
 square root of the leading coefficient, each next coefficient as an exact
 division, and a final check that the polynomial is the square of the root.
 
