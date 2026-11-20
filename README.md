@@ -125,9 +125,20 @@ like terms:
 These are the steps `expand` already takes; tracing only prints them, it
 does not change the calculation. Other algorithms expose their smaller
 steps in the same way: polynomial long division shows each
-quotient/remainder update, `sum` its power sums and bound shift, `cancel`
-its Euclid steps, `solve` its augmented matrix, row elimination and back
-substitution, and `integrate` its by-parts terms and substitutions.
+quotient/remainder update, `sum` its power sums and bound shift, `solve`
+its augmented matrix, row elimination and back substitution, and
+`integrate` its by-parts terms and substitutions. `cancel` writes out the
+whole calculation in three parts — finding the GCD by Euclid (each
+subtraction, expanded and collected), dividing out the GCD, and cancelling:
+
+    Finding GCD:
+    x^2-1-x(x-1) = x^2-1-x^2+x = x-1
+    x-1-(x-1) = x-1-x+1 = 0
+    GCD = x-1
+    Divide out the GCD:
+    (x^2-1)/(x-1) = x+1,   (x-1)/(x-1) = 1
+    Canceling:
+    (x^2-1)/(x-1) = (x+1)(x-1)/(x-1) = x+1
 `sqrt` of a perfect-square polynomial shows how the root is found: the
 square root of the leading coefficient, each next coefficient as an exact
 division, and a final check that the polynomial is the square of the root.

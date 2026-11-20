@@ -71,15 +71,22 @@ algorithms already compute (tracing does not change the calculation):
 * `sum` — `power sum` (Faulhaber), `shift bounds`, and the overall
   `Faulhaber's formula`.
 * `gcd`/`cancel` — `remove content`, `Euclid step`, `divide out the gcd`
-  and `make the denominator positive`.
+  and `make the denominator positive`. `cancel` instead presents the whole
+  calculation as one block: `Finding GCD:` (every subtraction, with the
+  product expanded and terms collected, then `GCD = ...`), `Divide out the
+  GCD:` and `Canceling:` (the fraction with numerator and denominator
+  factored by the GCD). Internal steps are hidden with `trace::Silence`
+  while that block is collected, so the confusing bare `expand` steps no
+  longer appear.
 * `solve` — `augmented matrix`, `eliminate column` and `back substitute`.
 * `integrate` — `divide numerator by denominator`, `solve coefficients`,
   `by-parts terms`, `rewrite the differential`, `substitute`,
   `integrate in` and `back substitute`.
 * `mulExpand` — each multiplication is shown in two phases: first the raw
   term-by-term products (`square`/`multiply`, plus `power as product` when a
-  power is rewritten as a product), then `sum the terms` combines like
-  terms. This is trace-only; the `expand` computation is unchanged.
+  power is rewritten as a product), then `sum the terms` shows only
+  `= <combined terms>` (the raw products are already on the previous line).
+  This is trace-only; the `expand` computation is unchanged.
 
 When merging an `xyz` update, keep these `trace::step` calls at their
 existing loop points; a conflict is most likely in the same files listed

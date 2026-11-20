@@ -814,7 +814,7 @@ Expr mulExpand(const Expr& a, const Expr& b, const char* label = nullptr)
 		            mkNode(Kind::Mul, Exprs{a, b}), raw);
 	Expr sum = simpAdd(out);
 	if (out.size() >= 3)
-		trace::step(trace::Level::Methods, "sum the terms", raw, sum);
+		trace::stepEquals(trace::Level::Methods, "sum the terms", sum);
 	return sum;
 }
 

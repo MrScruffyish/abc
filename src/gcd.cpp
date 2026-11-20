@@ -156,8 +156,16 @@ Expr primitivePart(const Expr& p, const std::string& x)
 	return exactDiv(p, content(p, x));
 }
 
-// pseudo-remainder of a by b in x (up to a factor without x)
-Expr prem(const Expr& a, const Expr& b, const std::string& x)
+// One subtraction of the pseudo-remainder algorithm: lc(b)*before - sub.
+// `shown` is the raw (unsimplified) subtraction, `after` its expanded value.
+struct RemStep {
+	Expr shown, after;
+};
+
+// pseudo-remainder of a by b in x (up to a factor without x). When `steps`
+// is given, record each subtraction for the work trace.
+Expr prem(const Expr& a, const Expr& b, const std::string& x,
+          std::vector<RemStep>* steps = nullptr)
 {
 	auto bc = polyCoefficients(b, x);
 	long db = degreeOf(bc);
@@ -169,7 +177,11 @@ Expr prem(const Expr& a, const Expr& b, const std::string& x)
 		if (dr < db)
 			return r;
 		Expr lead = mul(rc.at(dr), powX(x, dr - db));
-		r = expand(sub(mul(lcb, r), mul(lead, b)));
+		Expr subtrahend = mul(lead, b);
+		Expr shown = rawSub(mul(lcb, r), subtrahend);
+		r = expand(sub(mul(lcb, r), subtrahend));
+		if (steps)
+			steps->push_back({shown, r});
 	}
 }
 
@@ -212,6 +224,97 @@ Expr pgcd(const Expr& a, const Expr& b)
 
 // --------------------------------------------------------------- fractions
 
+// Distribute products over sums without combining like terms, so the trace
+// can show the raw terms of a subtraction before they are collected.
+Expr expandProducts(const Expr& e)
+{
+	if (e->kind == Kind::Add) {
+		Exprs out;
+		for (const Expr& t : e->args) {
+			Expr d = expandProducts(t);
+			if (d->kind == Kind::Add)
+				out.insert(out.end(), d->args.begin(), d->args.end());
+			else
+				out.push_back(d);
+		}
+		return mkNode(Kind::Add, std::move(out));
+	}
+	if (e->kind == Kind::Mul) {
+		Exprs fs;
+		bool changed = false;
+		for (const Expr& f : e->args) {
+			Expr d = expandProducts(f);
+			changed = changed || !equal(d, f);
+			fs.push_back(std::move(d));
+		}
+		Expr cur = changed ? mkNode(Kind::Mul, std::move(fs)) : e;
+		for (size_t i = 0; i < cur->args.size(); i++) {
+			if (cur->args[i]->kind != Kind::Add)
+				continue;
+			Exprs out;
+			for (const Expr& t : cur->args[i]->args) {
+				Exprs g(cur->args.begin(), cur->args.begin() + i);
+				g.push_back(t);
+				g.insert(g.end(), cur->args.begin() + i + 1, cur->args.end());
+				out.push_back(expandProducts(mkNode(Kind::Mul, std::move(g))));
+			}
+			return mkNode(Kind::Add, std::move(out));
+		}
+		return simpMul(cur->args);
+	}
+	return e;
+}
+
+// Rows collected while cancel() computes, rendered afterwards as one block.
+struct CancelDetail {
+	std::string rows;
+};
+thread_local CancelDetail* g_detail = nullptr;
+
+struct DetailGuard {
+	CancelDetail* saved;
+	explicit DetailGuard(CancelDetail* d) : saved(g_detail) { g_detail = d; }
+	~DetailGuard() { g_detail = saved; }
+	DetailGuard(const DetailGuard&) = delete;
+	DetailGuard& operator=(const DetailGuard&) = delete;
+};
+
+// The Euclid calculation written out as explicit subtractions, followed by
+// the GCD. Only used for the work trace; the computation is unchanged.
+std::string gcdDetailLaTeX(const Expr& a, const Expr& b)
+{
+	std::set<std::string> vars = symbolsOf(a);
+	for (const std::string& v : symbolsOf(b))
+		vars.insert(v);
+	if (vars.empty())
+		return {}; // a numeric gcd needs no steps
+	const std::string& x = *vars.begin();
+	Expr p = a, q = b;
+	std::string rows = "\\text{Finding GCD:} & \\\\\n";
+	try {
+		while (!isZero(q)) {
+			std::vector<RemStep> steps;
+			{
+				trace::Silence sil; // the small expand steps inside prem are noise
+				Expr r = normalized(prem(p, q, x, &steps));
+				p = q;
+				q = primitivePart(r, x);
+			}
+			for (const RemStep& st : steps) {
+				Expr spread = expandProducts(st.shown);
+				rows += toLatex(st.shown) + " &= ";
+				if (!equal(spread, st.shown))
+					rows += toLatex(spread) + " = ";
+				rows += toLatex(st.after) + " \\\\\n";
+			}
+		}
+	} catch (const Error&) {
+		return {};
+	}
+	rows += "\\text{GCD} &= " + toLatex(p) + " \\\\\n";
+	return rows;
+}
+
 struct Frac {
 	Expr n, d; // expanded polynomials, d != 0
 };
@@ -227,6 +330,22 @@ Frac reduce(const Frac& f)
 		            mkList(Exprs{f.n, f.d, g}), mkList(Exprs{n, d}));
 	Rational s = unitScale(d); // denominator: integer, positive leading term
 	Frac r{scale(n, s), scale(d, s)};
+	if (g_detail && g->kind != Kind::Num) {
+		std::string rows = gcdDetailLaTeX(f.n, f.d);
+		if (!rows.empty()) {
+			g_detail->rows += rows;
+			g_detail->rows += "\\text{Divide out the GCD:} & \\\\\n";
+			g_detail->rows += toLatex(rawDiv(f.n, g)) + " &= " + toLatex(n) + " \\\\\n";
+			g_detail->rows += toLatex(rawDiv(f.d, g)) + " &= " + toLatex(d) + " \\\\\n";
+			bool unit = d->kind == Kind::Num && d->num.isOne();
+			Expr den = unit ? g : rawMul(d, g);
+			Expr last = unit ? n : rawDiv(n, d);
+			g_detail->rows += "\\text{Canceling:} & \\\\\n";
+			g_detail->rows += toLatex(rawDiv(f.n, f.d)) + " = " +
+			                  toLatex(rawDiv(rawMul(n, g), den)) + " = " +
+			                  toLatex(last) + " \\\\\n";
+		}
+	}
 	if (!s.isOne())
 		trace::step(trace::Level::Methods, "make the denominator positive",
 		            mkList(Exprs{n, d}), mkList(Exprs{r.n, r.d}));
@@ -369,7 +488,15 @@ Expr polyLcm(const Expr& a, const Expr& b)
 Expr cancel(const Expr& e)
 {
 	trace::Scope scope("cancel");
-	Expr r = cancelImpl(e);
+	CancelDetail detail;
+	DetailGuard guard(trace::level() >= trace::Level::Methods ? &detail : nullptr);
+	Expr r;
+	{
+		trace::Silence sil; // collect one clean block instead of the small steps
+		r = cancelImpl(e);
+	}
+	if (!detail.rows.empty())
+		trace::latex(trace::Level::Methods, detail.rows);
 	trace::step(trace::Level::Methods, "cancel common factors", e, r);
 	return r;
 }

@@ -38,10 +38,27 @@ void endStatement();
 // before -> after (each side is one or several expressions).
 void step(Level min, const std::string& label, const Expr& before, const Expr& after);
 void step(Level min, const std::string& label, const Exprs& before, const Exprs& after);
+// A transform whose input was shown by the previous step: renders "= after".
+void stepEquals(Level min, const std::string& label, const Expr& after);
+// Pre-rendered LaTeX rows (each ending in "\\\n") to place in the align block.
+void latex(Level min, const std::string& rows);
 // A printed result, or a short note that has no mathematical expression.
 void result(const Expr& v);
 void result(const Exprs& v);
 void note(Level min, const std::string& text);
+
+// Suppresses ordinary steps while a composite value is computed; the caller
+// then emits one clean step describing the whole calculation.
+class Silence {
+public:
+	Silence();
+	~Silence();
+	Silence(const Silence&) = delete;
+	Silence& operator=(const Silence&) = delete;
+
+private:
+	int saved_ = 0;
+};
 
 // Adds a name to the label of the steps recorded inside it, e.g.
 // "integration by parts: ..." instead of just "...".

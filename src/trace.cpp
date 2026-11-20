@@ -16,7 +16,7 @@ constexpr size_t kMaxStepsPerStatement = 400;
 constexpr size_t kMaxStepsTotal = 8000;
 
 struct Step {
-	enum class Kind { Transform, Result, Note } kind = Kind::Transform;
+	enum class Kind { Transform, Equals, Result, Note, Latex } kind = Kind::Transform;
 	std::string label;
 	Exprs before, after;
 	std::string text;
@@ -33,6 +33,7 @@ std::string g_document;
 size_t g_total = 0;
 bool g_truncated = false;
 bool g_budgetUsed = false;
+int g_silent = 0;
 
 bool sameExprs(const Exprs& a, const Exprs& b)
 {
@@ -65,17 +66,22 @@ std::string stepLatex(const Step& s)
 	case Step::Kind::Transform:
 		return "\\text{" + latexText(s.label) + "} &: " + exprsLatex(s.before) +
 		       " = " + exprsLatex(s.after) + " \\\\\n";
+	case Step::Kind::Equals:
+		return "\\text{" + latexText(s.label) + "} &: = " +
+		       exprsLatex(s.after) + " \\\\\n";
 	case Step::Kind::Result:
 		return "\\text{" + latexText(s.label) + "} &: " + exprsLatex(s.after) + " \\\\\n";
 	case Step::Kind::Note:
 		return "\\textit{" + latexText(s.text) + "} \\\\\n";
+	case Step::Kind::Latex:
+		return s.text; // already complete align rows
 	}
 	return {};
 }
 
 void add(Step s)
 {
-	if (!g_active || g_level == Level::Off)
+	if (!g_active || g_level == Level::Off || g_silent > 0)
 		return;
 	if (g_steps.size() >= kMaxStepsPerStatement || g_total >= kMaxStepsTotal) {
 		if (!g_truncated) {
@@ -163,6 +169,30 @@ void step(Level min, const std::string& label, const Exprs& before, const Exprs&
 	s.after = after;
 	add(std::move(s));
 }
+
+void stepEquals(Level min, const std::string& label, const Expr& after)
+{
+	if (g_level < min || !g_active)
+		return;
+	Step s;
+	s.kind = Step::Kind::Equals;
+	s.label = scopedLabel(label);
+	s.after = {after};
+	add(std::move(s));
+}
+
+void latex(Level min, const std::string& rows)
+{
+	if (g_level < min || !g_active || rows.empty())
+		return;
+	Step s;
+	s.kind = Step::Kind::Latex;
+	s.text = rows;
+	add(std::move(s));
+}
+
+Silence::Silence() : saved_(g_silent) { ++g_silent; }
+Silence::~Silence() { g_silent = saved_; }
 
 void result(const Expr& v) { result(Exprs{v}); }
 

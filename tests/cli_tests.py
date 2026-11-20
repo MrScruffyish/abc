@@ -244,7 +244,8 @@ def main():
             "quo(x^3-1,x-1,x)": ["\\text{quo: long-division step}"],
             "sum(i^2,i=1 to n)": ["\\text{sum: power sum}",
                                   "\\text{sum: shift bounds}"],
-            "cancel((x^2-1)/(x^3-1))": ["\\text{cancel: Euclid step}"],
+            "cancel((x^2-1)/(x^3-1))": ["\\text{Finding GCD:}",
+                                        "\\text{Canceling:}"],
             "solve([x+y=3,x-y=1],[x,y])": ["\\text{solve: augmented matrix}",
                                            "\\text{solve: back substitute}"],
             "integrate(x*exp(x),x)": ["\\text{integrate: by-parts terms}"],
@@ -258,14 +259,27 @@ def main():
             check(f"work trace steps for {expr}",
                   all(s in out for s in wanted), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "cancel((x^2-1)/(x-1))"])
+        check("work trace shows the complete cancellation",
+              all(s in out for s in (
+                  r"\text{Finding GCD:} & \\",
+                  r"x^{2}-1-x \left(x-1\right) &= x^{2}-1-x^{2}+x = x-1 \\",
+                  r"x-1-\left(x-1\right) &= x-1-x+1 = 0 \\",
+                  r"\text{GCD} &= x-1 \\",
+                  r"\text{Divide out the GCD:} & \\",
+                  r"\frac{\left(x-1\right)}{\left(x-1\right)} &= 1 \\",
+                  r"\text{Canceling:} & \\",
+                  r"\frac{\left(x^{2}-1\right)}{\left(x-1\right)} = \frac{\left(x+1\right) \left(x-1\right)}{\left(x-1\right)} = x+1 \\",
+              )), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "expand((x+2)^3)"])
         check("expansion shows raw products before combining",
               all(s in out for s in (
                   r"\text{expand: power as product} &: \left(x+2\right)^{2} = \left(x+2\right) \left(x+2\right)",
                   r"\text{expand: square} &: \left(x+2\right) \left(x+2\right) = x^{2}+2 x+2 x+4",
-                  r"\text{expand: sum the terms} &: x^{2}+2 x+2 x+4 = x^{2}+4 x+4",
+                  r"\text{expand: sum the terms} &: = x^{2}+4 x+4",
                   r"\text{expand: multiply} &: \left(x+2\right) \left(x^{2}+4 x+4\right) = x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8",
-                  r"\text{expand: sum the terms} &: x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8 = x^{3}+6 x^{2}+12 x+8",
+                  r"\text{expand: sum the terms} &: = x^{3}+6 x^{2}+12 x+8",
               )), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "sqrt(x^2+2*x+1)"])
