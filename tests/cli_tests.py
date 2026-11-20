@@ -279,6 +279,22 @@ def main():
                   r"\frac{\left(x^{2}-1\right)}{\left(x-1\right)} = \frac{\left(x+1\right) \left(x-1\right)}{\left(x-1\right)} = x+1 \\",
               )), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "factor(x^4-1)"])
+        check("work trace shows how rational roots give the factors",
+              all(s in out for s in (
+                  r"\text{factor: rational root} &: x^{4}-1 = -1 \\",
+                  r"\text{factor: divide by the root} &: \frac{\left(x^{4}-1\right)}{\left(x+1\right)} = x^{3}-x^{2}+x-1 \\",
+                  r"\text{factor: rational root} &: x^{3}-x^{2}+x-1 = 1 \\",
+                  r"\text{factor: divide by the root} &: \frac{\left(x^{3}-x^{2}+x-1\right)}{\left(x-1\right)} = x^{2}+1 \\",
+              )), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "factor(x^4+x^2+1)"])
+        check("work trace shows the Kronecker factor",
+              all(s in out for s in (
+                  r"\text{factor: Kronecker factor} &: x^{4}+x^{2}+1 = x^{2}+x+1 \\",
+                  r"\text{factor: divide by the factor} &: \frac{\left(x^{4}+x^{2}+1\right)}{\left(x^{2}+x+1\right)} = x^{2}-x+1 \\",
+              )), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "expand((x+2)^3)"])
         check("expansion shows raw products before combining",
               all(s in out for s in (

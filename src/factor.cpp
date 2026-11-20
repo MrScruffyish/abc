@@ -526,6 +526,7 @@ Expr factorNumber(const Rational& r)
 // dense, with rational coefficients: c[i] is the coefficient of x^i
 
 using QPoly = std::vector<Rational>;
+Expr fromQPoly(const QPoly& p, const Expr& x);
 
 void trim(QPoly& p)
 {
@@ -755,14 +756,27 @@ std::vector<std::pair<QPoly, long>> squareFree(const QPoly& f)
 	return out;
 }
 
-// irreducible factors (as far as found) of a polynomial with degree >= 1
-std::vector<std::pair<QPoly, long>> factorUni(const QPoly& f)
+// irreducible factors (as far as found) of a polynomial with degree >= 1.
+// When x is given, record how each factor is found for the work trace.
+std::vector<std::pair<QPoly, long>> factorUni(const QPoly& f, const Expr& x = Expr())
 {
+	bool show = x && trace::level() >= trace::Level::Methods;
 	std::vector<std::pair<QPoly, long>> out;
 	for (auto [s, m] : squareFree(primitive(f))) {
+		if (show && m > 1)
+			trace::step(trace::Level::Methods, "repeated factor",
+			            fromQPoly(s, x), mkPow(fromQPoly(s, x), mkInt(m)));
 		for (const Rational& r : ratRoots(s)) { // q*x - p
+			QPoly rootFactor{-r, Rational(1)};
+			QPoly rest = quo(s, rootFactor);
+			if (show) {
+				Expr before = fromQPoly(s, x), fctr = fromQPoly(rootFactor, x);
+				trace::step(trace::Level::Methods, "rational root", before, mkNum(r));
+				trace::step(trace::Level::Methods, "divide by the root",
+				            rawDiv(before, fctr), fromQPoly(rest, x));
+			}
 			out.push_back({{Rational(-r.numerator(), BigInt(1L)), Rational(r.denominator(), BigInt(1L))}, m});
-			s = quo(s, {-r, Rational(1)});
+			s = std::move(rest);
 		}
 		if (degree(s) < 1)
 			continue;
@@ -771,6 +785,12 @@ std::vector<std::pair<QPoly, long>> factorUni(const QPoly& f)
 			for (long k = 2; 2 * k <= degree(g); k++) {
 				QPoly h = kroneckerFactor(g, k);
 				if (!h.empty()) {
+					if (show) {
+						Expr before = fromQPoly(g, x), fctr = fromQPoly(h, x);
+						trace::step(trace::Level::Methods, "Kronecker factor", before, fctr);
+						trace::step(trace::Level::Methods, "divide by the factor",
+						            rawDiv(before, fctr), fromQPoly(quo(g, h), x));
+					}
 					out.emplace_back(h, m);
 					split(primitive(quo(g, h)));
 					return;
@@ -960,29 +980,29 @@ Expr linearFactor(const Expr& p, const std::set<std::string>& vs)
 }
 
 // the square-free, primitive p (no common factors): split it further
-void splitSquareFree(const Expr& p, long m, Parts& out)
+void splitSquareFree(const Expr& p, long m, Parts& out, const Expr& x = Expr())
 {
 	std::set<std::string> vs;
 	symbols(p, vs);
 	if (vs.size() == 1) {
-		Expr x = mkSym(*vs.begin());
+		Expr v = mkSym(*vs.begin());
 		QPoly q;
-		if (toQPoly(p, x->name, q)) {
-			for (const auto& [f, k] : factorUni(q))
-				out.emplace_back(fromQPoly(f, x), m * k);
+		if (toQPoly(p, v->name, q)) {
+			for (const auto& [f, k] : factorUni(q, v))
+				out.emplace_back(fromQPoly(f, v), m * k);
 			return;
 		}
 	}
 	long total;
 	if (vs.size() == 2 && isHomogeneous(p, total)) {
 		// p(x, y) = y^total * p(x/y, 1)
-		Expr x = mkSym(*vs.begin()), y = mkSym(*vs.rbegin());
+		Expr v = mkSym(*vs.begin()), y = mkSym(*vs.rbegin());
 		QPoly q;
-		if (toQPoly(substitute(p, y->name, mkInt(1)), x->name, q)) {
-			for (const auto& [f, k] : factorUni(q)) {
+		if (toQPoly(substitute(p, y->name, mkInt(1)), v->name, q)) {
+			for (const auto& [f, k] : factorUni(q, v)) {
 				Exprs t;
 				for (size_t i = 0; i < f.size(); i++)
-					t.push_back(mul(mkNum(f[i]), mul(simpPow(x, mkInt(static_cast<long>(i))),
+					t.push_back(mul(mkNum(f[i]), mul(simpPow(v, mkInt(static_cast<long>(i))),
 					                                  simpPow(y, mkInt(degree(f) - static_cast<long>(i))))));
 				out.emplace_back(simpAdd(t), m * k);
 			}
@@ -992,8 +1012,8 @@ void splitSquareFree(const Expr& p, long m, Parts& out)
 	if (vs.size() >= 2) {
 		Expr f = linearFactor(p, vs);
 		if (f) {
-			splitSquareFree(f, m, out);
-			splitSquareFree(exactQuo(p, f), m, out);
+			splitSquareFree(f, m, out, x);
+			splitSquareFree(exactQuo(p, f), m, out, x);
 			return;
 		}
 	}
@@ -1031,7 +1051,7 @@ void factorRec(Expr p, long m, Parts& out)
 	vs.clear();
 	symbols(p, vs); // some may be gone with the common factors
 	if (vs.size() == 1) {
-		splitSquareFree(p, m, out); // square-free decomposition there
+		splitSquareFree(p, m, out, mkSym(*vs.begin())); // square-free decomposition there
 		return;
 	}
 	// square-free decomposition in the first symbol (Yun)
@@ -1042,7 +1062,7 @@ void factorRec(Expr p, long m, Parts& out)
 	for (long i = 1; containsSym(b, x); i++) {
 		a = polyGcd(b, d);
 		if (a->kind != Kind::Num)
-			splitSquareFree(a, m * i, out);
+			splitSquareFree(a, m * i, out, mkSym(x));
 		b = exactQuo(b, a);
 		c = exactQuo(d, a);
 		d = expand(sub(c, diff(b, x)));
