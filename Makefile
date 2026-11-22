@@ -36,6 +36,9 @@ ASAN_OBJS := $(SRCS:src/%.cpp=$(BUILD)/asan/%.o)
 EXAMPLES    := $(wildcard examples/*.abc)
 EXAMPLE_DIR := $(BUILD)/examples
 WORK_LEVEL  ?= methods
+# Pin the random-seed so "make test" is reproducible; override with SEED=...
+# when looking for new cases (the numeric trigreduce check is tolerance-limited).
+SEED        ?= 12345
 
 # Only the board executable lives outside the build tree; its input and
 # the rendered movies are written to build/examples/ with the LaTeX files.
@@ -141,12 +144,12 @@ $(BUILD)/abc-asan: $(ASAN_OBJS) $(BCL_LIB)
 test: abc
 	python3 tests/run_tests.py ./abc
 	python3 tests/cli_tests.py ./abc
-	python3 tests/random_tests.py ./abc
+	python3 tests/random_tests.py ./abc --seed $(SEED)
 
 test-asan: $(BUILD)/abc-asan
 	python3 tests/run_tests.py $(BUILD)/abc-asan
 	python3 tests/cli_tests.py $(BUILD)/abc-asan
-	python3 tests/random_tests.py $(BUILD)/abc-asan --count 60
+	python3 tests/random_tests.py $(BUILD)/abc-asan --count 60 --seed $(SEED)
 
 clean:
 	rm -rf abc $(BUILD)/obj $(BUILD)/asan $(BUILD)/abc-asan $(EXAMPLE_DIR)
