@@ -6,10 +6,15 @@ works well in pipes. All numbers are **exact**: arithmetic uses rationals
 of arbitrary-precision integers, and the integer arithmetic is done by
 **bcl**, the library form of [Gavin D. Howard's bc](https://github.com/gavinhoward/bc).
 
-`abc` is a fork of [`xyz`](../xyz) with one extra feature:
-`--show-your-work`, which records the steps of a calculation and exports
-them as LaTeX. The original `xyz` is left untouched; see `ABC-NOTES.md`
-for how to merge later `xyz` changes into this fork.
+`abc` is its own program, hosted at
+[github.com/MrScruffyish/abc](https://github.com/MrScruffyish/abc). It grew
+out of [`xyz`](../xyz) and shares its algorithms, but its purpose is
+different: it records the steps of a calculation and exports them as
+LaTeX or as input for [`board`](../Black-Bored-By-Numbers/README.md), so a
+calculation can be watched as an animated derivation. `xyz` is a standalone
+CAS and will never produce board input. Shareable fixes are cherry-picked
+from `xyz` into `abc`; see `ABC-NOTES.md` for the repository setup and the
+merge checklist.
 
 ```console
 $ echo 'a := x; b := a*a+3; b; eval(b, x=1)' | abc
