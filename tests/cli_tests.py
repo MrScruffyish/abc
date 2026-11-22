@@ -216,6 +216,12 @@ def main():
         check("work-level=top omits rewrites",
               ("\\left(x+1\\right) \\left(x+1\\right)" not in out and
                "x^{2}+2 x+1 \\\\" in out), True)
+        out, _, _ = run(b, ["--show-your-work", "--work-file=" + worktex,
+                            "-e", "diff(x^2*exp(x), x)"])
+        default_out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                                    "--work-file=" + worktex,
+                                    "-e", "diff(x^2*exp(x), x)"])
+        check("show-your-work defaults to methods", out, default_out)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "expand((x+1)^2)"])
         check("work-level=methods keeps intermediate products",

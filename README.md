@@ -120,8 +120,11 @@ recorded; each level includes the ones before it:
 | Level     | What is shown |
 |-----------|---------------|
 | `top`     | the input, builtin calls and the final result |
-| `methods` | also named algorithms: expand, factor, quadratic formula, integration by parts, L'Hopital's rule, ... |
-| `all`     | also every expression rewrite and automatic simplification (the default with `--show-your-work`) |
+| `methods` | also named algorithms: expand, factor, quadratic formula, integration by parts, L'Hopital's rule, ... (the default) |
+| `all`     | also every expression rewrite and automatic simplification |
+
+Both `--show-your-work` and `--board-file` default to `methods`, so the two
+renderers show the same steps unless you set `--work-level` explicitly.
 
 For example, `expand((x+2)^3)` at `methods` level shows each multiplication
 in two phases: first the raw term-by-term products, then the combining of
@@ -197,10 +200,10 @@ For a single example without Make:
 ```
 
 Both renderers show the same thing: the statement once to say what is about
-to be done, then only the mathematics. `--board-file` (default level
-`methods`) writes one `$...$` formula per scene, except that a chained
-calculation is written as a `\begin{rows}` block so `board` draws all of its
-rows in one scene; `--show-your-work` writes the same steps as LaTeX rows
+to be done, then only the mathematics. `--board-file` writes one `$...$`
+formula per scene, except that a chained calculation is written as a
+`\begin{rows}` block so `board` draws all of its rows in one scene;
+`--show-your-work` writes the same steps as LaTeX rows
 inside `align*`, keeping only the wrappers LaTeX needs (`verbatim` for the
 statement, `array` for long division). No step labels or text-only headings
 appear in either output.

@@ -69,10 +69,10 @@ void usage(std::ostream& out)
 	       "                         rounding\n"
 	       "      --show-your-work   show the steps to each result as LaTeX on stdout\n"
 	       "                         and write a complete .tex document\n"
-	       "      --work-level=LEVEL top, methods or all (default all with the flag)\n"
+	       "      --work-level=LEVEL top, methods or all (default methods)\n"
 	       "      --work-file=FILE   the .tex document (default work.tex)\n"
 	       "      --board-file=FILE  write steps as board input ($...$ per scene);\n"
-	       "                         implies tracing, default level methods\n"
+	       "                         implies tracing\n"
 	       "  -h, --help             show this help\n"
 	       "  -v, --version          show version and license\n"
 	       "\n"
@@ -172,8 +172,7 @@ int realMain(int argc, char** argv)
 	std::vector<std::string> exprs, files;
 	bool optsDone = false;
 	bool showWork = false;
-	bool workLevelSet = false;
-	xyz::trace::Level workLevel = xyz::trace::Level::All;
+	xyz::trace::Level workLevel = xyz::trace::Level::Methods;
 	std::string workFile = "work.tex";
 	std::string boardFile;
 	for (int i = 1; i < argc; i++) {
@@ -202,13 +201,11 @@ int realMain(int argc, char** argv)
 				std::cerr << "abc: --show-your-work: level must be top, methods or all\n";
 				return 2;
 			}
-			workLevelSet = true;
 		} else if (a.rfind("--work-level=", 0) == 0) {
 			if (!parseWorkLevel(a.substr(13), workLevel)) {
 				std::cerr << "abc: --work-level: must be top, methods or all\n";
 				return 2;
 			}
-			workLevelSet = true;
 		} else if (a.rfind("--board-file=", 0) == 0) {
 			boardFile = a.substr(13);
 			if (boardFile.empty()) {
@@ -251,9 +248,6 @@ int realMain(int argc, char** argv)
 			return 2;
 		}
 	}
-
-	if (!boardFile.empty() && !workLevelSet)
-		workLevel = xyz::trace::Level::Methods; // short scenes by default
 
 	xyz::trace::reset();
 	xyz::trace::setStream(std::cout);
