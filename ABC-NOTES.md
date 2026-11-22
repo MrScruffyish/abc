@@ -49,9 +49,34 @@ block in board input, which `board` draws as a single stacked scene. Keep
 the two renderers together when merging `xyz` changes; the `rows` directive
 lives in `board` itself (no `--expand` needed), so update both repositories.
 
+### Merge checklist
+
+`xyz/main` is currently `7d8c2ae`, already merged here as `1fde401`; abc is
+16 commits ahead. When new upstream commits appear:
+
+1. `git fetch xyz && git merge xyz/main`. Resolve the conflict-prone files
+   listed above by keeping every `trace::step` call at its existing loop
+   point (the wrappers are additive and do not change results).
+2. Rebuild and run `make test`. The CLI suite includes a renderer-parity
+   check that compares the normalised math rows of `--show-your-work` and
+   `--board-file` for every example, so a fix applied to only one renderer
+   fails here. `random_tests.py` runs with a pinned `SEED`; override it with
+   `SEED=...` only when deliberately hunting for new numeric cases.
+3. If an `xyz` change adds a new algorithm, give it a `methods`-level trace
+   in the matching `*Impl` wrapper and extend both renderers' regression
+   expectations. If it changes `toLatex()` output, update `toBoard()` in
+   `src/trace.cpp` and the parity normaliser in `tests/cli_tests.py`
+   together.
+4. If board's input language changes, update `../Black-Bored-By-Numbers` in
+   its own commit first — in particular the `\begin{rows}` directive is a
+   core (non-`--expand`) feature that `--board-file` depends on.
+5. Finish with `make everything` and spot-check the regenerated PDFs and
+   movies before merging upstream changes into abc's history.
+
 ## How the trace works
 
-`--show-your-work` enables `trace::Level::All`. Levels are cumulative:
+`--show-your-work` and `--board-file` both enable `trace::Level::Methods` by
+default; pass `--work-level=all` for the full trace. Levels are cumulative:
 
 | Level     | Captured |
 |-----------|----------|
@@ -129,10 +154,11 @@ polynomials still use the ordinary derivative rules. With
 ## Testing
 
 `make test` runs the golden, CLI and randomised suites. The randomised
-suite has pre-existing flakes in `test_taylor` and `test_factor_gauss`;
-for example seed `574894500` (`test_taylor`) and seed `617788697` (both)
-fail identically with the unmodified `../xyz/xyz`. The deterministic
-suites pass, and the generated LaTeX compiles with
+suite has pre-existing numeric flakes in `test_taylor`, `test_trigreduce`
+and `test_factor_gauss` that also fail with the unmodified `../xyz/xyz`;
+`make test` therefore passes a fixed `SEED ?= 12345` so results are
+reproducible. Override with `SEED=...` to look for new cases. The
+deterministic suites pass, and the generated LaTeX compiles with
 `pdflatex` when it is installed (checked by `cli_tests.py`).
 
 `make examples` (optionally with `WORK_LEVEL=all` or `top`, or `ONLY=name`)
