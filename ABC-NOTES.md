@@ -1,10 +1,14 @@
 # abc: a work-tracing fork of xyz
 
-`abc` is a sibling copy of [`../xyz`](../xyz). It is a normal git clone whose
-remote `xyz` points at the original local checkout:
+`abc` is a sibling copy of [`../xyz`](../xyz) and is its own program, hosted at
+[`git@github.com:MrScruffyish/abc.git`](https://github.com/MrScruffyish/abc).
+Its `origin` remote is that GitHub repo; the separate `xyz` remote points at
+the original local checkout and is used only to pull upstream fixes:
 
 ```
 $ git -C ../abc remote -v
+origin	git@github.com:MrScruffyish/abc.git (fetch)
+origin	git@github.com:MrScruffyish/abc.git (push)
 xyz	/home/gunnar/MrScruffy/xyz (fetch)
 xyz	/home/gunnar/MrScruffy/xyz (push)
 ```
