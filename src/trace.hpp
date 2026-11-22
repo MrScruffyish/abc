@@ -29,6 +29,10 @@ void setLevel(Level l);
 void setStream(std::ostream& out);
 void setWorkFile(std::string file);
 const std::string& workFile();
+// If set, steps are written as board input (one "$...$" formula per line)
+// instead of LaTeX on stdout. See writeBoardFile().
+void setBoardFile(std::string file);
+const std::string& boardFile();
 
 // One statement at a time: begin clears the step list, end renders it to
 // stdout and appends it to the document written by writeDocument().
@@ -76,6 +80,8 @@ private:
 // Writes the complete LaTeX document. Returns false if the file cannot be
 // opened or written.
 bool writeDocument(const std::string& file);
+// Writes the trace as board input; "-" means stdout.
+bool writeBoardFile(const std::string& file);
 void reset();
 
 } // namespace trace

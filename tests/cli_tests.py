@@ -194,39 +194,33 @@ def main():
               run(b, ["-e", "disp(num(2/3, 5), num(pi, 4), num(-2/3, 3))"]),
               ("0.66667\t3.1416\t-0.667\n", "", 0))
 
-        # --show-your-work: steps as LaTeX on stdout and in a .tex document
+        # --show-your-work: the same math-only steps as board, inside LaTeX
         worktex = os.path.join(d, "show.tex")
         out, err, code = run(b, ["--show-your-work", "--work-file=" + worktex,
-                                "-e", "expand((x+1)^2)"])
+                                 "-e", "expand((x+1)^2)"])
         check("show-your-work: stdout is LaTeX",
               all(s in out for s in ("\\begin{verbatim}", "\\begin{align*}",
-                                     "\\text{result} &: x^{2}+2 x+1", "\\end{align*}"))
+                                     "x^{2}+2 x+1 \\\\", "\\end{align*}"))
               and "x^2+2*x+1\n" not in out, True)
         check("show-your-work: clean stderr and exit", (err, code), ("", 0))
+        check("show-your-work: no step labels", "\\text{" not in out, True)
         with open(worktex) as f:
             doc = f.read()
         check("show-your-work: complete .tex document",
               all(s in doc for s in (
                   "\\documentclass{article}", "\\usepackage{amsmath}",
                   "\\begin{verbatim}\nexpand((x+1)^2)\n\\end{verbatim}",
-                  "\\text{result} &: x^{2}+2 x+1", "\\end{document}")), True)
+                  "x^{2}+2 x+1 \\\\", "\\end{document}")), True)
         out, _, _ = run(b, ["--show-your-work=top", "--work-file=" + worktex,
                             "-e", "expand((x+1)^2)"])
         check("work-level=top omits rewrites",
-              ("combine terms" not in out and "\\text{result}" in out), True)
+              ("\\left(x+1\\right) \\left(x+1\\right)" not in out and
+               "x^{2}+2 x+1 \\\\" in out), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "expand((x+1)^2)"])
-        check("work-level=methods keeps named methods",
-              ("\\text{expand: expand}" in out and "combine terms" not in out), True)
-        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
-                            "--work-file=" + worktex, "-e", "expand((x+2)^3)"])
-        check("work trace shows the multiplications in a power expansion",
-              all(s in out for s in (
-                  "\\text{expand: square} &: \\left(x+2\\right) \\left(x+2\\right) "
-                  "= x^{2}+2 x+2 x+4",
-                  "\\text{expand: multiply} &: \\left(x+2\\right) "
-                  "\\left(x^{2}+4 x+4\\right) "
-                  "= x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8")), True)
+        check("work-level=methods keeps intermediate products",
+              ("\\left(x+1\\right)^{2} = \\left(x+1\\right) \\left(x+1\\right)" in out and
+               "combine terms" not in out), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=all",
                             "--work-file=" + worktex, "-e", "diff(x^2*exp(x), x)"])
         check("work trace groups exp powers for LaTeX",
@@ -235,38 +229,31 @@ def main():
                             "--work-file=" + worktex, "-e", "diff((x+1)^3,x)"])
         check("work trace uses a difference quotient for polynomials",
               all(s in out for s in (
-                  "use the limit definition",
-                  "\\text{diff: expand difference quotient}",
-                  "\\text{diff: take the limit as h -> 0}",
-                  "\\text{result} &: 3 x^{2}+6 x+3")), True)
-        # Named algorithms now expose the simpler steps they are built from.
+                  r"\frac{\left(\left(h+x+1\right)^{3}-\left(x+1\right)^{3}\right)}{h} = h^{2}+3 h x+3 x^{2}+3 h+6 x+3",
+                  r"\operatorname{limit}\left(\frac{\left(\left(h+x+1\right)^{3}-\left(x+1\right)^{3}\right)}{h}, h, 0\right) = 3 x^{2}+6 x+3",
+                  r"3 x^{2}+6 x+3 \\")), True)
+        # Named algorithms still expose the simpler steps they are built from.
         traces = {
-            "quo(x^3-1,x-1,x)": ["\\text{quo: long-division step}"],
-            "sum(i^2,i=1 to n)": ["\\text{sum: power sum}",
-                                  "\\text{sum: shift bounds}"],
-            "cancel((x^2-1)/(x^3-1))": ["\\text{Finding GCD:}",
-                                        "\\text{Canceling:}"],
-            "solve([x+y=3,x-y=1],[x,y])": ["\\text{solve: augmented matrix}",
-                                           "\\text{solve: back substitute}"],
-            "integrate(x*exp(x),x)": ["\\text{integrate: by-parts terms}"],
-            "integrate(x*exp(x^2),x)": ["\\text{integrate: rewrite the differential}",
-                                        "\\text{integrate: back substitute}"],
-            "expand((x+1)^3)": ["\\text{expand: sum the terms}"],
+            "quo(x^3-1,x-1,x)": [r"x^{2} \left(x-1\right) = x^{3}-x^{2}"],
+            "sum(i^2,i=1 to n)": [r"\frac{n^{3}}{3}+\frac{n^{2}}{2}+\frac{n}{6}"],
+            "cancel((x^2-1)/(x^3-1))": [r"\begin{array}{r|l}", r"\mathrm{GCD}"],
+            "solve([x+y=3,x-y=1],[x,y])": [r"\left[2, 1\right]"],
+            "integrate(x*exp(x),x)": [r"x e^{x} = x e^{x}-e^{x}"],
+            "integrate(x*exp(x^2),x)": [r"\int x e^{x^{2}} \, dx = \frac{e^{x^{2}}}{2}"],
+            "expand((x+1)^3)": [r"x^{3}+3 x^{2}+3 x+1"],
         }
         for expr, wanted in traces.items():
             out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                                 "--work-file=" + worktex, "-e", expr])
             check(f"work trace steps for {expr}",
-                  all(s in out for s in wanted), True)
+                  all(s in out for s in wanted) and "\\text{" not in out, True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "cancel((x^2-1)/(x-1))"])
         check("work trace shows the complete cancellation",
               all(s in out for s in (
-                  r"\text{Finding GCD:} & \\",
                   r"x^{2}-1-x \left(x-1\right) &= x^{2}-1-x^{2}+x = x-1 \\",
                   r"x-1-\left(x-1\right) &= x-1-x+1 = 0 \\",
-                  r"\text{GCD} &= x-1 \\",
-                  r"\text{Divide out the GCD:} & \\",
+                  r"\mathrm{GCD} &= x-1 \\",
                   r"\begin{array}{r|l}",
                   r" & x+1 \\ \cline{2-2}",
                   r"x-1 & x^{2}-1 \\",
@@ -275,53 +262,56 @@ def main():
                   r" & -\left(x-1\right) \\ \cline{2-2}",
                   r" & 0 \\",
                   r"\frac{\left(x-1\right)}{\left(x-1\right)} &= 1 \\",
-                  r"\text{Canceling:} & \\",
                   r"\frac{\left(x^{2}-1\right)}{\left(x-1\right)} = \frac{\left(x+1\right) \left(x-1\right)}{\left(x-1\right)} = x+1 \\",
+                  r"x+1 \\",
               )), True)
+        check("work trace has no text headings",
+              all(s not in out for s in ("Finding GCD:", "Divide out the GCD:", "Canceling:")), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "factor(x^4-1)"])
         check("work trace shows how rational roots give the factors",
               all(s in out for s in (
-                  r"\text{factor: possible rational roots} &: x^{4}-1 = \left[-1, 1\right] \\",
-                  r"\text{factor: try the candidates} &: \left[p\left(-1\right), p\left(1\right)\right] = \left[0, 0\right] \\",
-                  r"\text{factor: rational root} &: x^{4}-1 = -1 \\",
-                  r"\text{factor: divide by the root} &: \frac{\left(x^{4}-1\right)}{\left(x+1\right)} = x^{3}-x^{2}+x-1 \\",
-                  r"\text{factor: rational root} &: x^{3}-x^{2}+x-1 = 1 \\",
-                  r"\text{factor: divide by the root} &: \frac{\left(x^{3}-x^{2}+x-1\right)}{\left(x-1\right)} = x^{2}+1 \\",
+                  r"x^{4}-1 = \left[-1, 1\right] \\",
+                  r"\left[p\left(-1\right), p\left(1\right)\right] = \left[0, 0\right] \\",
+                  r"x^{4}-1 = -1 \\",
+                  r"\frac{\left(x^{4}-1\right)}{\left(x+1\right)} = x^{3}-x^{2}+x-1 \\",
+                  r"&= 1 \\",
+                  r"\frac{\left(x^{3}-x^{2}+x-1\right)}{\left(x-1\right)} = x^{2}+1 \\",
               )), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "factor(x^4+x^2+1)"])
         check("work trace shows the Kronecker factor",
               all(s in out for s in (
-                  r"\text{factor: possible rational roots} &: x^{4}+x^{2}+1 = \left[-1, 1\right] \\",
-                  r"\text{factor: Kronecker factor} &: x^{4}+x^{2}+1 = x^{2}+x+1 \\",
-                  r"\text{factor: divide by the factor} &: \frac{\left(x^{4}+x^{2}+1\right)}{\left(x^{2}+x+1\right)} = x^{2}-x+1 \\",
+                  r"x^{4}+x^{2}+1 = x^{2}+x+1 \\",
+                  r"\frac{\left(x^{4}+x^{2}+1\right)}{\left(x^{2}+x+1\right)} = x^{2}-x+1 \\",
               )), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "factor(2*x^3-3*x^2-2*x)"])
         check("work trace tries fractional root candidates",
               all(s in out for s in (
-                  r"\text{factor: possible rational roots} &: 2 x^{2}-3 x-2 = \left[-2, -1, -\frac{1}{2}, \frac{1}{2}, 1, 2\right] \\",
-                  r"\text{factor: try the candidates} &: \left[p\left(-2\right), p\left(-1\right), p\left(-\frac{1}{2}\right), p\left(\frac{1}{2}\right), p\left(1\right), p\left(2\right)\right] = \left[12, 3, 0, -3, -3, 0\right] \\",
+                  r"2 x^{2}-3 x-2 = \left[-2, -1, -\frac{1}{2}, \frac{1}{2}, 1, 2\right] \\",
+                  r"\left[p\left(-2\right), p\left(-1\right), p\left(-\frac{1}{2}\right), p\left(\frac{1}{2}\right), p\left(1\right), p\left(2\right)\right] = \left[12, 3, 0, -3, -3, 0\right] \\",
               )), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "expand((x+2)^3)"])
         check("expansion shows raw products before combining",
               all(s in out for s in (
-                  r"\text{expand: power as product} &: \left(x+2\right)^{2} = \left(x+2\right) \left(x+2\right)",
-                  r"\text{expand: square} &: \left(x+2\right) \left(x+2\right) = x^{2}+2 x+2 x+4",
-                  r"\text{expand: sum the terms} &: = x^{2}+4 x+4",
-                  r"\text{expand: multiply} &: \left(x+2\right) \left(x^{2}+4 x+4\right) = x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8",
-                  r"\text{expand: sum the terms} &: = x^{3}+6 x^{2}+12 x+8",
+                  r"\left(x+2\right)^{2} = \left(x+2\right) \left(x+2\right) \\",
+                  r"&= x^{2}+2 x+2 x+4 \\",
+                  r"&= x^{2}+4 x+4 \\",
+                  r"\left(x+2\right) \left(x^{2}+4 x+4\right) = x^{3}+4 x^{2}+4 x+2 x^{2}+8 x+8 \\",
+                  r"&= x^{3}+6 x^{2}+12 x+8 \\",
               )), True)
+        check("work trace: repeated left sides become leading equals",
+              r"\left(x+2\right) \left(x+2\right) = x^{2}+2 x+2 x+4" not in out, True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "sqrt(x^2+2*x+1)"])
         check("work trace shows the square-root algorithm",
               all(s in out for s in (
-                  r"\text{sqrt: leading term} &: \operatorname{sqrt}\left(1\right) = 1",
-                  r"\text{sqrt: next coefficient} &: \frac{2}{2} = 1",
-                  r"\text{sqrt: verify the square} &: x^{2}+2 x+1 = \left(x+1\right)^{2}",
-                  r"\text{result} &: \left|x+1\right|",
+                  r"\operatorname{sqrt}\left(1\right) = 1 \\",
+                  r"\frac{2}{2} = 1 \\",
+                  r"x^{2}+2 x+1 = \left(x+1\right)^{2} \\",
+                  r"\left|x+1\right| \\",
               )), True)
         out, _, _ = run(b, ["--show-your-work", "--work-file=" + worktex,
                             "-e", "1+1", "-e", "2+2"])
@@ -347,6 +337,64 @@ def main():
             check("exp work trace compiles with pdflatex", p.returncode, 0)
         else:
             print("skipping work-trace pdflatex check (not installed)")
+
+        # --board-file: steps as board formulas, with only the opening
+        # statement naming what is about to happen
+        check("board-file to stdout",
+              run(b, ["--board-file=-", "-e", "1/3+1/6"]),
+              ("# written by abc --board-file\n$1/3+1/6$\n"
+               "$\\frac{1}{2}$\n", "", 0))
+        board_input = os.path.join(d, "steps.txt")
+        before = set(os.listdir(d))
+        out, err, code = run(b, ["--board-file=" + board_input,
+                                 "-e", "expand((x+1)^2)"])
+        check("board-file: clean stdout, stderr and exit", (out, err, code), ("", "", 0))
+        check("board-file: no work document", set(os.listdir(d)) - before, {"steps.txt"})
+        with open(board_input) as f:
+            text = f.read()
+        check("board-file: formula lines are preserved", all(s in text for s in (
+            "$expand((x+1)^2)$",
+            "$\\left(x+1\\right)^{2} = \\left(x+1\\right) \\left(x+1\\right)$",
+            "$= x^{2}+x+x+1$",
+            "$= x^{2}+2 x+1$")), True)
+        out, _, _ = run(b, ["--board-file=-", "--work-level=methods",
+                            "-e", "expand((x+2)^3)"])
+        check("board-file: repeated left sides become leading equals",
+              all(s in out for s in (
+                  "$\\left(x+2\\right)^{2} = \\left(x+2\\right) \\left(x+2\\right)$",
+                  "$= x^{2}+2 x+2 x+4$",
+                  "$= x^{2}+4 x+4$")), True)
+        groups = [g.split("\\end{rows}")[0].strip().splitlines()
+                  for g in out.split("\\begin{rows}")[1:]]
+        check("board-file: each chain is one rows block", len(groups), 2)
+        check("board-file: a chain keeps all of its rows", groups[0], [
+            "$\\left(x+2\\right)^{2} = \\left(x+2\\right) \\left(x+2\\right)$",
+            "$= x^{2}+2 x+2 x+4$",
+            "$= x^{2}+4 x+4$"])
+        check("board-file: rows blocks are closed",
+              out.count("\\begin{rows}") == out.count("\\end{rows}"), True)
+        check("board-file: step labels are left out", all(s not in text for s in (
+            "expand:", "result:", "power as product", "sum the terms")), True)
+        lines = [line for line in text.splitlines() if line.startswith("$")]
+        check("board-file: no identical neighbouring scenes",
+              any(a == b for a, b in zip(lines, lines[1:])), False)
+        check("board-file: no LaTeX math environments", all(e not in text for e in (
+            "\\begin{align", "\\begin{array", "\\begin{verbatim}")), True)
+        out, _, _ = run(b, ["--board-file=-", "--work-level=top",
+                            "-e", "expand((x+1)^2)"])
+        check("board-file: work-level=top omits rewrites",
+              ("power as product" not in out and "$x^{2}+2 x+1$" in out), True)
+        out, _, _ = run(b, ["--board-file=-", "-e", "cancel((x^2-1)/(x-1))"])
+        check("board-file: array rows become formulas", all(s in out for s in (
+            "$GCD = x-1$", "$x-1 : x^{2}-1$",
+            "$\\frac{\\left(x^{2}-1\\right)}{\\left(x-1\\right)} = "
+            "\\frac{\\left(x+1\\right) \\left(x-1\\right)}{\\left(x-1\\right)} = x+1$")), True)
+        check("board-file: no text-only detail headers", all(s not in out for s in (
+            "$Finding GCD:$", "$Divide out the GCD:$", "$Canceling:$")), True)
+        check("empty board file name", run(b, ["--board-file=", "-e", "1"])[1:],
+              ("abc: --board-file needs a file name\n", 2))
+        out, _, _ = run(b, ["--help"])
+        check("help mentions --board-file", "--board-file" in out, True)
 
         # --imag=NAME
         check("--imag=i: input and output use i",

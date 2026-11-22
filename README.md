@@ -37,6 +37,10 @@ give it as `BC_DIR`:
 ```sh
 git clone https://github.com/gavinhoward/bc ../bc   # tested with 7.2.0 (1a8e2e65)
 make                  # builds bcl out-of-tree in build/bcl, then ./abc
+make help             # lists every target and where its output goes
+make examples         # all examples: LaTeX work docs + board input
+make movies           # render the board input as movies (slow)
+make everything       # examples + movies in one command
 make test             # golden, CLI and randomised tests
 make test-asan        # the same under AddressSanitizer + UBSan
 make BC_DIR=/path/to/bc
@@ -55,7 +59,8 @@ The bc checkout is never modified. bcl is configured with
 
 ```
 abc [-h] [-v] [--imag=NAME] [--trunc] [--show-your-work]
-    [--work-level=LEVEL] [--work-file=FILE] [-e expr]... [file]...
+    [--work-level=LEVEL] [--work-file=FILE] [--board-file=FILE]
+    [-e expr]... [file]...
 ```
 
 * With no arguments, `abc` reads standard input. If standard input is a
@@ -76,6 +81,11 @@ abc [-h] [-v] [--imag=NAME] [--trunc] [--show-your-work]
 * `--show-your-work` replaces the normal plain-text output with LaTeX
   steps for every statement, and writes a complete LaTeX document to
   `work.tex`; see [Showing your work](#showing-your-work).
+* `--board-file=FILE` writes the steps as board formulas for
+  [`board`](../Black-Bored-By-Numbers/README.md) instead of LaTeX (use `-`
+  for stdout). Consecutive rows of a calculation are grouped in a
+  `\begin{rows}` block so they share one scene. It implies tracing and
+  defaults to `methods` level.
 * Results go to stdout and errors go to stderr (`error: line N: ...`).
   Processing continues with the next statement after an error. The exit
   status is 0 if there were no errors, 1 if there were errors, and 2 for
@@ -160,13 +170,40 @@ coefficient, each next coefficient as an exact division, and a final check
 that the polynomial is the square of the root.
 
 The [`examples/`](examples/README.md) directory contains short input
-programs for algebra, equations, calculus, sums, assumptions and numbers,
-each ready to run with the work trace. From the project root, run
-`make examples` to build them all: it writes
-`build/examples/<name>.tex`, `build/examples/<name>.stdout.tex` and, when
-`pdflatex` is installed, `build/examples/<name>.pdf`. Use
-`make examples WORK_LEVEL=all` for the most detailed trace (the target
-defaults to `methods`).
+programs for algebra, equations, calculus, sums, assumptions and numbers.
+There are only three build commands for them:
+
+```sh
+make examples         # LaTeX + board input for every example (fast)
+make movies           # render the board input to .mp4 (slow)
+make everything       # both of the above
+```
+
+Everything for an example goes into `build/examples/`: `<name>.tex`,
+`<name>.stdout.tex`, `abc-<name>.txt` (board input), `<name>.pdf` when
+`pdflatex` is installed, and `abc-<name>.mp4` after `make movies`. Every
+file written is printed. Add `ONLY=algebra` (or `ONLY="algebra sums"`) to
+any of the three commands to build just those examples. `WORK_LEVEL` sets
+the trace detail (`top`, `methods` or `all`; default `methods`), and `BOARD`
+selects the executable (default `../Black-Bored-By-Numbers/board`).
+`make clean` removes `build/examples/`, movies included. `make help` prints
+the same summary.
+
+For a single example without Make:
+
+```sh
+./abc --board-file=board-input.txt examples/numbers.abc
+./abc --board-file=- --work-level=all examples/numbers.abc   # to stdout
+```
+
+Both renderers show the same thing: the statement once to say what is about
+to be done, then only the mathematics. `--board-file` (default level
+`methods`) writes one `$...$` formula per scene, except that a chained
+calculation is written as a `\begin{rows}` block so `board` draws all of its
+rows in one scene; `--show-your-work` writes the same steps as LaTeX rows
+inside `align*`, keeping only the wrappers LaTeX needs (`verbatim` for the
+statement, `array` for long division). No step labels or text-only headings
+appear in either output.
 
 The trace is capped at 400 steps per statement and 8000 steps in total,
 so a runaway calculation cannot produce an enormous document; a note in

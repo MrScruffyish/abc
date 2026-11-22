@@ -39,6 +39,16 @@ New files: `src/trace.hpp`, `src/trace.cpp` and the runnable inputs in
 `examples/`. The C++ namespace is still `xyz` inside the code; only the
 binary, docs and messages are called `abc`. That keeps the diff small.
 
+`--board-file=FILE` is a second renderer for the same `Step` list: the
+`toBoard()` helpers in `src/trace.cpp` translate each step's LaTeX into the
+small subset `board` understands and write one `$...$` formula per scene.
+Both renderers print the statement once and then only mathematics; only the
+wrappers differ (`align*`/`array` in LaTeX, `$...$` lines for board). A
+chained calculation is one `align*` group in LaTeX and one `\begin{rows}`
+block in board input, which `board` draws as a single stacked scene. Keep
+the two renderers together when merging `xyz` changes; the `rows` directive
+lives in `board` itself (no `--expand` needed), so update both repositories.
+
 ## How the trace works
 
 `--show-your-work` enables `trace::Level::All`. Levels are cumulative:
@@ -125,8 +135,10 @@ fail identically with the unmodified `../xyz/xyz`. The deterministic
 suites pass, and the generated LaTeX compiles with
 `pdflatex` when it is installed (checked by `cli_tests.py`).
 
-`make examples` (optionally with `WORK_LEVEL=all` or `top`) runs every
-file in `examples/` through the tracer and writes the resulting `.tex`,
-`.stdout.tex` and (when `pdflatex` is available) `.pdf` files into
-`build/examples/`. It is a convenient smoke test that the whole pipeline
-still works after merging an `xyz` update.
+`make examples` (optionally with `WORK_LEVEL=all` or `top`, or `ONLY=name`)
+runs the examples through the tracer and writes `.tex`, `.stdout.tex`,
+`abc-<name>.txt` and (when `pdflatex` is available) `.pdf` files into
+`build/examples/`. `make movies` renders the inputs to `abc-<name>.mp4` in
+the same directory, and `make everything` does both. They are convenient
+smoke tests that the whole pipeline still works after merging an `xyz`
+update.
