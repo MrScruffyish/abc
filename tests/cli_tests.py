@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 import os
 import pty
+import re
 import shutil
 import subprocess
 import sys
@@ -71,6 +72,84 @@ def check(name, got, want):
     if got != want:
         failures += 1
         print(f"FAIL {name}\n  expected {want!r}\n  got      {got!r}")
+
+
+# --show-your-work and --board-file render the same Step list. Compare the rows
+# they emit for every example, after stripping only the formatting that is
+# deliberately different (LaTeX row separators and align markers vs board's
+# $...$ lines and \begin{rows} blocks). Any missing, extra or reordered row
+# then means the two renderers have drifted apart.
+PLAIN_COMMANDS = ("sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh",
+                  "tanh", "exp", "ln", "log", "arcsin", "arccos", "arctan")
+WRAPPERS = ("operatorname", "mathrm", "text", "textit", "texttt", "mathbf",
+            "mathsf", "mathtt", "mathit", "boldsymbol", "emph")
+
+
+def latex_blocks(text):
+    """Split a work trace into (statement, align rows) pairs."""
+    pattern = (r"\\begin\{verbatim\}\n(.*?)\\end\{verbatim\}\n"
+               r"(?:\\begin\{align\*\}\n(.*?)\\end\{align\*\}\n)?")
+    return [(m.group(1).strip(), (m.group(2) or "").splitlines())
+            for m in re.finditer(pattern, text, re.S)]
+
+
+def board_blocks(text, sources):
+    """Split board input into the rows following each statement line."""
+    lines = [l for l in text.splitlines() if l and not l.startswith("#")]
+    blocks, pos = [], 0
+    for k, src in enumerate(sources):
+        start = lines.index("$" + src + "$", pos)
+        later = ["$" + s + "$" for s in sources[k + 1:]]
+        end = next((j for j in range(start + 1, len(lines)) if lines[j] in later),
+                   len(lines))
+        blocks.append((src, lines[start + 1:end]))
+        pos = start + 1
+    return blocks
+
+
+def canonical_row(row, in_array):
+    row = re.sub(r"\\(?:" + "|".join(WRAPPERS) + r")\{([^{}]*)\}", r"\1", row)
+    row = re.sub(r"\\(?:ldots|cdots|dots)", "...", row)
+    row = re.sub(r"\\(" + "|".join(PLAIN_COMMANDS) + r")", r"\1", row)
+    row = row.replace("&", ":" if in_array else "")
+    row = re.sub(r"\\cline\{[^}]*\}", "", row)
+    return re.sub(r"\s+", "", row)
+
+
+def trace_rows(rows, latex):
+    """The mathematical content of one statement's rows, in order."""
+    out, in_array = [], False
+    for row in rows:
+        row = row.strip()
+        if latex:
+            row = row.replace("\\\\", "").strip()
+            if row.startswith(r"\begin{array}"):
+                in_array = True
+                continue
+            if row == r"\end{array}":
+                in_array = False
+                continue
+        else:
+            if row in (r"\begin{rows}", r"\end{rows}"):
+                continue
+            if row.startswith("$") and row.endswith("$"):
+                row = row[1:-1]
+        row = canonical_row(row, in_array)
+        if row:
+            out.append(row)
+    return out
+
+
+def renderer_drift(latex_text, board_text):
+    """Describe any row-level differences between the two renderers."""
+    blocks = latex_blocks(latex_text)
+    board = board_blocks(board_text, [src for src, _ in blocks])
+    drift = []
+    for (src, latex_rows), (_, board_rows) in zip(blocks, board):
+        a, b = trace_rows(latex_rows, True), trace_rows(board_rows, False)
+        if a != b:
+            drift.append((src, a, b))
+    return drift
 
 
 def main():
@@ -434,16 +513,24 @@ def main():
     o, e, _ = run(b, [], "sqrt(x^2)\n")
     check("no note in a pipe", "note:" in o + e, False)
 
-    # the worked examples all produce a LaTeX work document
+    # the worked examples all produce a LaTeX work document, and both renderers
+    # must show the same rows at the same level
     exroot = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "examples")
     with tempfile.TemporaryDirectory() as exdir:
         for name in sorted(n for n in os.listdir(exroot) if n.endswith(".abc")):
+            source = os.path.join(exroot, name)
             tex = os.path.join(exdir, name[:-4] + ".tex")
+            board = os.path.join(exdir, name[:-4] + ".txt")
             out, err, code = run(b, ["--show-your-work", "--work-level=methods",
-                                    "--work-file=" + tex, os.path.join(exroot, name)])
+                                    "--work-file=" + tex, source])
             with open(tex) as f:
                 has_document = "\\begin{document}" in f.read()
             check(f"example {name}", (err, code, has_document), ("", 0, True))
+            _, err, code = run(b, ["--board-file=" + board, "--work-level=methods", source])
+            with open(board) as f:
+                board_text = f.read()
+            check(f"example {name}: board input", (err, code), ("", 0))
+            check(f"example {name}: renderer parity", renderer_drift(out, board_text), [])
 
     print(f"cli tests: {'ok' if not failures else f'{failures} FAILED'}")
     sys.exit(1 if failures else 0)
