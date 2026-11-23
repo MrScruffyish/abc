@@ -317,6 +317,23 @@ def main():
                   r"\frac{\left(\left(h+x+1\right)^{3}-\left(x+1\right)^{3}\right)}{h} = h^{2}+3 h x+3 x^{2}+3 h+6 x+3",
                   r"\operatorname{limit}\left(\frac{\left(\left(h+x+1\right)^{3}-\left(x+1\right)^{3}\right)}{h}, h, 0\right) = 3 x^{2}+6 x+3",
                   r"3 x^{2}+6 x+3 \\")), True)
+        # L'Hopital and differentiation are operator results: the rows must
+        # not claim that a function equals its derivative or its limit.
+        out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
+                            "--work-file=" + worktex, "-e", "limit(sin(x)/x,x=0)"])
+        check("L'Hopital row shows the limit on both sides",
+              all(s in out for s in (
+                  r"\frac{d}{dx} \left(\sin\left(x\right)\right) = \cos\left(x\right) \\",
+                  r"\frac{d}{dx} \left(x\right) = 1 \\",
+                  r"\operatorname{lim}_{x \to 0} \frac{\sin\left(x\right)}{x} = "
+                  r"\operatorname{lim}_{x \to 0} \cos\left(x\right) \\",
+              )), True)
+        check("no false equalities in limit traces",
+              all(s not in out for s in (
+                  r"\sin\left(x\right) = \cos\left(x\right) \\",
+                  r"x = 1 \\",
+                  r"\frac{\sin\left(x\right)}{x} = \cos\left(x\right) \\",
+              )), True)
         # Named algorithms still expose the simpler steps they are built from.
         traces = {
             "quo(x^3-1,x-1,x)": [r"x^{2} \left(x-1\right) = x^{3}-x^{2}"],
@@ -422,6 +439,13 @@ def main():
                                 "-halt-on-error", "exp.tex"], cwd=d,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             check("exp work trace compiles with pdflatex", p.returncode, 0)
+            limtex = os.path.join(d, "lim.tex")
+            run(b, ["--show-your-work", "--work-file=" + limtex,
+                    "-e", "limit(sin(x)/x,x=0)", "-e", "limit(ln(x)/x,x=inf)"])
+            p = subprocess.run(["pdflatex", "-interaction=nonstopmode",
+                                "-halt-on-error", "lim.tex"], cwd=d,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            check("limit work trace compiles with pdflatex", p.returncode, 0)
         else:
             print("skipping work-trace pdflatex check (not installed)")
 

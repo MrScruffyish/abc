@@ -110,8 +110,9 @@ algorithms already compute (tracing does not change the calculation):
 * `factor` — `possible rational roots` lists the candidates (divisors of
   the constant term over divisors of the leading coefficient, capped at 24
   shown); `try the candidates` shows `p(r)` for each one and its value, so
-  the zeros are the roots. `rational root` and `divide by the root` then
-  show each root that works and the division that removes it. `Kronecker
+  the zeros are the roots. `rational root` then states `p(r) = 0` (a root is
+  a value of `x`, not of `p`); `divide by the root` shows the division that
+  removes it. `Kronecker
   factor` and `divide by the factor` do the same for the higher-degree
   factors found by interpolation.
 * `sum` — `power sum` (Faulhaber), `shift bounds`, and the overall
@@ -154,6 +155,22 @@ recursing back into the limit definition. Expressions that are not small
 polynomials still use the ordinary derivative rules. With
 `--show-your-work` the quotient, cancellation and limit are printed at
 `methods` level.
+
+## Trace rows must be true statements
+
+Some methods produce an operator result rather than a rewrite, so `before =
+after` would be false. These `abc` traces therefore use explicit notation
+instead of `trace::step`:
+
+* `diff` writes `\frac{d}{dx} \left(f\right) = f'` (not `f = f'`).
+* L'Hopital writes the limit on both sides of the equality (not `f =
+  f'/g'`); the limit point and one-sided superscript come from the `Limit`
+  being evaluated.
+* a rational root writes `p(r) = 0` (not `p(x) = r`).
+
+`\operatorname` is used for `lim` because the board parser accepts it after
+`abc`'s LaTeX-to-board conversion (a bare `\lim` would not survive). The
+rows compile with `pdflatex` and pass `board --syntax-check`.
 
 ## Testing
 

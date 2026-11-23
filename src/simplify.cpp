@@ -951,16 +951,27 @@ bool diffByLimit(const Expr& n, const std::string& x, Expr& result)
 
 } // namespace
 
+// A derivative is an operator result, not a rewrite of n: "d/dx n = r" is
+// true, "n = r" generally is not. Keep that notation in both renderers.
+void traceDiffStep(const std::string& x, const Expr& n, const Expr& r)
+{
+	if (trace::level() < trace::Level::Methods)
+		return;
+	std::string row = "\\frac{d}{d" + x + "} \\left(" + toLatex(n) +
+	                  "\\right) = " + toLatex(r) + " \\\\\n";
+	trace::latex(trace::Level::Methods, row);
+}
+
 Expr diff(const Expr& n, const std::string& x)
 {
 	Expr r;
 	if (diffByLimit(n, x, r)) {
-		trace::step(trace::Level::Methods, "differentiate", n, r);
+		traceDiffStep(x, n, r);
 		return r;
 	}
 	trace::Scope scope("diff");
 	r = diffImpl(n, x);
-	trace::step(trace::Level::Methods, "differentiate", n, r);
+	traceDiffStep(x, n, r);
 	return r;
 }
 

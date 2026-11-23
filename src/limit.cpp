@@ -70,6 +70,9 @@ Expr flatPow(const Expr& n)
 	}
 }
 
+struct Limit;
+void traceLimitStep(const Limit& L, const Expr& before, const Expr& after);
+
 struct Limit {
 	std::string x;
 	Expr a;  // a finite point, or inf
@@ -377,7 +380,7 @@ struct Limit {
 		if (isZero(dq))
 			throw NoLimit("limit: cannot find the limit of " + toString(f));
 		Expr r = dv(dp, dq);
-		trace::step(trace::Level::Methods, "L'Hopital's rule", f, r);
+		traceLimitStep(*this, f, r);
 		if (isRationalFn(r) && hasVariableDenominator(r))
 			r = cancel(r);
 		return lim(r, depth + 1);
@@ -512,6 +515,25 @@ struct Limit {
 		throw NoLimit("limit: " + n + "(" + (s > 0 ? "inf" : "-inf") + ") does not exist");
 	}
 };
+
+// L'Hopital replaces f/g by f'/g' inside a limit: the two functions are not
+// equal, only their limits are. Show the limit on both sides so the row stays
+// a true statement. \operatorname works in both renderers (the board parser
+// has no plain \lim command).
+void traceLimitStep(const Limit& L, const Expr& before, const Expr& after)
+{
+	if (trace::level() < trace::Level::Methods)
+		return;
+	std::string point = toLatex(L.a);
+	if (L.dir > 0)
+		point += "^+";
+	else if (L.dir < 0)
+		point += "^-";
+	std::string where = "\\operatorname{lim}_{" + L.x + " \\to " + point + "}";
+	trace::latex(trace::Level::Methods,
+	             where + " " + toLatex(before) + " = " + where + " " +
+	             toLatex(after) + " \\\\\n");
+}
 
 } // namespace
 
