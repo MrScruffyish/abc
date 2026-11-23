@@ -176,7 +176,7 @@ std::string wrapperText(const std::string& cmd, const std::string& inner)
 	if (cmd == "textbackslash")
 		return " ";
 	if (cmd == "overline")
-		return inner;
+		return "\\overline{" + inner + "}";
 	return inner;
 }
 
@@ -280,7 +280,12 @@ std::string toBoard(const std::string& tex)
 			i += 2;
 			continue;
 		}
-		if (c == '&') { // align* / array column separator
+		if (c == '&') { // align* / array column separator, but keep logical &&
+			if (i + 1 < tex.size() && tex[i + 1] == '&') {
+				out += "&&";
+				i += 2;
+				continue;
+			}
 			size_t j = i + 1;
 			while (j < tex.size() && (tex[j] == ' ' || tex[j] == '\t')) j++;
 			if (j < tex.size() && tex[j] == ':') { out += ':'; i = j + 1; continue; }

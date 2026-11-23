@@ -1,0 +1,9 @@
+# Polynomial divisors, division, degree and coefficients.
+gcd(x^4-1, x^3-1)
+lcm(x^2-1, x^2-2*x+1)
+quo(x^4-1, x-1, x)
+rem(x^4-1, x-1, x)
+quo(x^4+1, x-1, x)
+rem(x^4+1, x-1, x)
+deg(x^4-1, x)
+coeff(x^4-1, x, 2)

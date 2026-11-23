@@ -178,7 +178,9 @@ coefficient, each next coefficient as an exact division, and a final check
 that the polynomial is the square of the root.
 
 The [`examples/`](examples/README.md) directory contains short input
-programs for algebra, equations, calculus, sums, assumptions and numbers.
+programs covering numbers, algebra, polynomials, equations, calculus,
+limits, functions, complex numbers, sums, lists, assumptions, programming
+constructs and logic.
 There are only three build commands for them:
 
 ```sh
@@ -1286,7 +1288,8 @@ Things that are known to be missing or only partly done:
 | `src/limit.cpp`            | limit(), taylor()                                |
 | `src/assume.cpp`           | assumptions, known signs                         |
 | `src/numeric.cpp`          | decimal values for num()                         |
-| `src/print.cpp`            | expression → text                                |
+| `src/print.cpp`            | expression → text and LaTeX                      |
+| `src/trace.*`              | work-trace levels and LaTeX/board renderers      |
 | `src/parser.*`             | lexer and recursive-descent parser               |
 | `src/interpreter.*`        | variables, functions, built-ins, statements      |
 | `src/main.cpp`             | command line                                     |

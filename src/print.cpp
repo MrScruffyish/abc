@@ -666,15 +666,21 @@ std::string latexText(const std::string& text)
 
 std::string latexName(const std::string& name)
 {
+	// Internal names such as ~h and ~p2 are tilde-prefixed. latexText's
+	// \~{} is a text-mode accent, which fails inside an align* environment,
+	// so spell the prefix out for both renderers instead.
+	std::string n;
+	for (char c : name)
+		n += c == '~' ? "tilde" : std::string(1, c);
 	// x_1 -> x_{1}, alpha -> \alpha, abc -> \mathrm{abc}
-	size_t u = name.rfind('_');
-	if (u != std::string::npos && u > 0 && u + 1 < name.size())
-		return latexName(name.substr(0, u)) + "_{" + latexName(name.substr(u + 1)) + "}";
-	if (isGreek(name))
-		return "\\" + name;
-	if (name.size() == 1)
-		return name;
-	return "\\mathrm{" + latexText(name) + "}";
+	size_t u = n.rfind('_');
+	if (u != std::string::npos && u > 0 && u + 1 < n.size())
+		return latexName(n.substr(0, u)) + "_{" + latexName(n.substr(u + 1)) + "}";
+	if (isGreek(n))
+		return "\\" + n;
+	if (n.size() == 1)
+		return n;
+	return "\\mathrm{" + latexText(n) + "}";
 }
 
 std::string toLatex(const Expr& e)

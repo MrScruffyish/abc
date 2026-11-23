@@ -1,4 +1,9 @@
-# Expansion, factoring and cancellation.
+# Expansion, factoring, cancellation and polynomial square roots.
 expand((x+2)^3)
+expand((x-1)*(x+2)*(x-3))
 factor(x^4-1)
+factor(2*x^4+4*x^3-2*x^2-4*x)
+factor(x^4+5*x^2+6)
+factor(x^4+x^2+1)
 cancel((x^2-1)/(x-1))
+sqrt((x^2+2*x+1)^2)

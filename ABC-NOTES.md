@@ -169,8 +169,13 @@ instead of `trace::step`:
 * a rational root writes `p(r) = 0` (not `p(x) = r`).
 
 `\operatorname` is used for `lim` because the board parser accepts it after
-`abc`'s LaTeX-to-board conversion (a bare `\lim` would not survive). The
-rows compile with `pdflatex` and pass `board --syntax-check`.
+`abc`'s LaTeX-to-board conversion (a bare `\lim` would not survive). Internal
+names such as `~p2` are spelled `tilde p2` by `latexName`: `latexText`'s
+`\~{}` is a text-mode accent and cannot appear in `align*`. `conj` keeps
+`\overline{...}`; `board` now parses that accent too, so the two renderers
+stay in parity. `&&` is preserved in board statement lines instead of being
+converted to align-column separators. All example rows compile with
+`pdflatex` and pass `board --syntax-check`.
 
 ## Testing
 
@@ -181,6 +186,10 @@ and `test_factor_gauss` that also fail with the unmodified `../xyz/xyz`;
 reproducible. Override with `SEED=...` to look for new cases. The
 deterministic suites pass, and the generated LaTeX compiles with
 `pdflatex` when it is installed (checked by `cli_tests.py`).
+
+The `examples/` set covers all builtin groups, control flow, lists, logic and
+the main edge cases; new `.abc` files are picked up automatically by the
+Makefile and by the cross-renderer parity test.
 
 `make examples` (optionally with `WORK_LEVEL=all` or `top`, or `ONLY=name`)
 runs the examples through the tracer and writes `.tex`, `.stdout.tex`,

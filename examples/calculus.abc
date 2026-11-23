@@ -1,5 +1,14 @@
-# Differentiation, integration by parts, L'Hopital and a series.
+# Differentiation and integration: products, powers, parts and substitution.
 diff(x^2*exp(x), x)
+diff(sin(x)*cos(x), x)
+diff(ln(x)/x, x)
+diff(x^5, x, 3)
+diff(x^x, x)
 integrate(x*exp(x), x)
-limit(sin(x)/x, x = 0)
-taylor(ln(x), x = 1, 3)
+integrate(x*ln(x), x)
+integrate(1/(x^2+1), x)
+integrate(x*exp(x^2), x)
+integrate(sin(x)^2, x)
+integrate(exp(x)*sin(x), x)
+integrate(x^2, x, 0, 1)
+integrate(exp(-x), x, 0, inf)

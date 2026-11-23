@@ -1,0 +1,18 @@
+# Complex arithmetic, conjugates, modulus and complex-valued equations.
+(3+2*im)*(1-im)
+(1+im)^4
+1/(1+im)
+Re(3+2*im)
+Im(3+2*im)
+Re(x+im*y)
+Im((x+im*y)^2)
+conj(3+2*im)
+conj(1/(1+im))
+abs(3+4*im)
+abs(x+im*y)
+sqrt(-4)
+ln(-1)
+gcd(x^2+1, x-im)
+cancel((x^2+1)/(x-im))
+factor(x^2+1, im)
+solve(x^2+1 = 0, x)

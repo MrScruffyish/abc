@@ -1,0 +1,15 @@
+# Lists, indexing, elementwise arithmetic and tables.
+l = [1, 2, x];
+l
+l[3]
+l + 1
+2*l
+l^2
+l/2
+l + [10, 20, 30]
+[[1, 2], [3, 4]][2][1]
+sin([0, pi/2])
+diff([x^2, sin(x)], x)
+table(x^2, x = 1 to 3)
+table(x, y, x*y, x = 1 to 2, y = 1 to 3)
+table(t, 2t, t = 0 to 1 step 1/3)

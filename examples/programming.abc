@@ -1,0 +1,25 @@
+# Variables, formulas, user functions, control flow and tables.
+x = 1;
+a := x+1;
+b = a+1;
+x = 10;
+a
+b
+p = (x+1)^2;
+x = 3;
+p
+eval(p)
+p + x
+eval(p + x)
+f(x, y) := x^2+y
+f(2, 3)
+subs(f(x, y), y=1)
+def(a)
+unset(a, b, p)
+s = 0;
+for (i = 1 to 3) { s = s + i; }
+s
+if (s > 3) { disp(big) } else { disp(small) }
+while (s < 6) { s = s+1; }
+s
+table(x, x^2, x = 1 to 3)
