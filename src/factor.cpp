@@ -798,7 +798,9 @@ std::vector<std::pair<QPoly, long>> factorUni(const QPoly& f, const Expr& x = Ex
 			QPoly rest = quo(s, rootFactor);
 			if (show) {
 				Expr before = fromQPoly(s, x), fctr = fromQPoly(rootFactor, x);
-				trace::step(trace::Level::Methods, "rational root", before, mkNum(r));
+				// The root is a value of x that makes p zero, not a value of p.
+				trace::step(trace::Level::Methods, "rational root",
+				            mkCall("p", {mkNum(r)}), mkInt(0));
 				trace::step(trace::Level::Methods, "divide by the root",
 				            rawDiv(before, fctr), fromQPoly(rest, x));
 			}

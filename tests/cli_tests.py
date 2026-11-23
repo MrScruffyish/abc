@@ -358,11 +358,13 @@ def main():
               all(s in out for s in (
                   r"x^{4}-1 = \left[-1, 1\right] \\",
                   r"\left[p\left(-1\right), p\left(1\right)\right] = \left[0, 0\right] \\",
-                  r"x^{4}-1 = -1 \\",
+                  r"p\left(-1\right) = 0 \\",
                   r"\frac{\left(x^{4}-1\right)}{\left(x+1\right)} = x^{3}-x^{2}+x-1 \\",
-                  r"&= 1 \\",
+                  r"p\left(1\right) = 0 \\",
                   r"\frac{\left(x^{3}-x^{2}+x-1\right)}{\left(x-1\right)} = x^{2}+1 \\",
               )), True)
+        check("rational roots are not printed as values of p",
+              all(s not in out for s in (r"x^{4}-1 = -1", r"x^{4}-1 = 1")), True)
         out, _, _ = run(b, ["--show-your-work", "--work-level=methods",
                             "--work-file=" + worktex, "-e", "factor(x^4+x^2+1)"])
         check("work trace shows the Kronecker factor",
